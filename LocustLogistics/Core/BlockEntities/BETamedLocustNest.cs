@@ -16,9 +16,9 @@ namespace LocustLogistics.Core.BlockEntities
 {
     public class BETamedLocustNest : BlockEntity, ILocustNest
     {
+        int? hiveId;
         AutomataLocustsCore modSystem;
         HashSet<EntityLocust> locusts;
-        public int? HiveId { get; set; }
         public BETamedLocustNest()
         {
             locusts = new HashSet<EntityLocust>();
@@ -36,22 +36,20 @@ namespace LocustLogistics.Core.BlockEntities
         {
             base.Initialize(api);
             modSystem = api.ModLoader.GetModSystem<AutomataLocustsCore>();
-            if (HiveId.HasValue)
-            {
-                modSystem.GetHive(HiveId.Value).Add(this);
-            }
+            if (!hiveId.HasValue) hiveId = modSystem.CreateHive();
+            modSystem.Tune(hiveId, this);
         }
 
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
-            if(HiveId.HasValue) modSystem.GetHive(HiveId.Value)?.Detune(this);
+            modSystem.Tune(null, this);
         }
 
         public override void OnBlockUnloaded()
         {
             base.OnBlockUnloaded();
-            if(HiveId.HasValue) modSystem.GetHive(HiveId.Value)?.Remove(this); // Is still part of the hive, just unloaded.
+            modSystem.Tune(null, this);
         }
 
         public bool TryStoreLocust(EntityLocust locust)
@@ -82,10 +80,7 @@ namespace LocustLogistics.Core.BlockEntities
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
-            if (HiveId.HasValue)
-            {
-                tree.SetInt("hiveId", HiveId.Value);
-            }
+            if (hiveId.HasValue) tree.SetInt("hiveId", hiveId.Value);
 
             int i = 0;
             foreach (var locust in locusts)
@@ -102,11 +97,15 @@ namespace LocustLogistics.Core.BlockEntities
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
 
-            HiveId = tree.TryGetInt("hiveId");
-            if (HiveId.HasValue && modSystem != null) // If modSystem not set yet, then this is on load. We'll do it in Initialize.
-            {
-                modSystem.GetHive(HiveId.Value).Add(this);
-            }
+            var id = tree.TryGetInt("hiveId");
+            // If modSystem not set yet, then this is on-load. We'll do it later in Initialize.
+            if ((id.HasValue != hiveId.HasValue) ||
+                ((id.HasValue && hiveId.HasValue) && id != hiveId)) modSystem?.Tune(id, this);
+
+            // hiveId will get set again in OnTuned. Eh.
+            // This way we don't need a second variable just
+            // for getting this id to Initialize.
+            hiveId = id;
 
             locusts.Clear();
             int count = tree.GetInt("locustCount");
@@ -130,7 +129,10 @@ namespace LocustLogistics.Core.BlockEntities
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
-            dsc.AppendLine($"Hive: {(HiveId.HasValue ? HiveId.Value : "None")}");
+            dsc.AppendLine($"Hive: {(hiveId.HasValue ? hiveId.Value : "None")}");
         }
+
+        public void OnTuned(int? hive) => hiveId = hive;
+
     }
 }

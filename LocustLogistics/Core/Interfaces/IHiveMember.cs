@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.MathTools;
+﻿using System;
+using Vintagestory.API.MathTools;
 
 #nullable enable
 
@@ -8,7 +9,8 @@ namespace LocustLogistics.Core.Interfaces
     {
         Vec3d Position { get; }
         int Dimension { get; }
-        public int? HiveId { get; set; }
+
+        void OnTuned(int? hive);
 
     }
 }

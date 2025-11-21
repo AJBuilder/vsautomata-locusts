@@ -14,7 +14,7 @@ namespace LocustLogistics.Core.Items
     {
         Calibrate,
         Tune,
-        Detune
+        Zero,
     }
     public class ItemHiveTuner : Item
     {
@@ -38,10 +38,11 @@ namespace LocustLogistics.Core.Items
                 // Modes
                 // 1. Tune to nest
                 // 2. Detune
-                modes = new SkillItem[4];
-                modes[(int)HiveTunerMode.Calibrate] = new SkillItem() { Code = new AssetLocation("calibrate"), Name = "calibrate" };
+                modes = new SkillItem[3];
+                modes[(int)HiveTunerMode.Calibrate] = new SkillItem() { Code = new AssetLocation("calibrate"), Name = "Calibrate" };
                 modes[(int)HiveTunerMode.Tune] = new SkillItem() { Code = new AssetLocation("tune"), Name = "Tune" };
-                modes[(int)HiveTunerMode.Detune] = new SkillItem() { Code = new AssetLocation("detune"), Name = "Detune" };
+                modes[(int)HiveTunerMode.Zero] = new SkillItem() { Code = new AssetLocation("zero"), Name = "Zero" };
+
 
 
                 //if (capi != null)
@@ -122,9 +123,12 @@ namespace LocustLogistics.Core.Items
                 switch (mode)
                 {
                     case HiveTunerMode.Calibrate:
-                        var h = target.Hive;
-                        if(h != null) attributes.SetInt("calibratedHive", target.Hive.Id);
-                        else if(api is ICoreClientAPI capi){
+                        if (modSystem.AllMembers.TryGetValue(target, out var hive))
+                        {
+                            attributes.SetInt("calibratedHive", hive);
+                        }
+                        else if (api is ICoreClientAPI capi)
+                        {
                             capi.TriggerIngameError(this, "No target hive", "Target is not tuned to a Hive.");
                         }
                         break;
@@ -132,19 +136,15 @@ namespace LocustLogistics.Core.Items
                         var hiveId = attributes.TryGetInt("calibratedHive");
                         if (hiveId.HasValue)
                         {
-                            modSystem.GetHive(hiveId.Value).Tune(target);
+                            modSystem.Tune(hiveId.Value, target);
                         }
-                        else {
-                            modSystem.CreateHive(target);
-                        }
-                        break;
-                    case HiveTunerMode.Detune:
-                        var hive = target.Hive;
-                        if(hive != null) hive.Detune(target);
                         else if (api is ICoreClientAPI capi)
                         {
-                            capi.TriggerIngameError(this, "No target hive", "Target is not tuned to a Hive.");
+                            capi.TriggerIngameError(this, "No calibrated hive", "Not calibrated to any Hive.");
                         }
+                        break;
+                    case HiveTunerMode.Zero:
+                        modSystem.Tune(null, target);
                         break;
                 }
             }

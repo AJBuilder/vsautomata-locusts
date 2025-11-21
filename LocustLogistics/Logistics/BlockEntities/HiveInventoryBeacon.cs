@@ -26,7 +26,9 @@ namespace LocustLogistics.TransferItems.BlockEntities
 
         public int Dimension => Pos.dimension;
 
-        public LocustHive Hive { get; set; }
-
+        public void OnTuned(int? hive)
+        {
+            
+        }
     }
 }

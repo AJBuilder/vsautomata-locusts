@@ -18,6 +18,8 @@ namespace LocustLogistics.Core.AiTasks
         WaypointsTraverser pathTraverser;
         ILocustNest targetNest;
         bool pathfindingActive;
+        AutomataLocustsCore modSystem;
+        IHiveMember member;
 
         public string Id => "returnToNest";
         public int Slot => 0;
@@ -39,6 +41,16 @@ namespace LocustLogistics.Core.AiTasks
             }
 
             pathTraverser = entity.GetBehavior<EntityBehaviorTaskAI>().PathTraverser;
+            modSystem = entity.Api.ModLoader.GetModSystem<AutomataLocustsCore>();
+            member = entity as IHiveMember;
+            if (member == null)
+            {
+                member = entity
+                        .SidedProperties
+                        .Behaviors
+                        .OfType<IHiveMember>()
+                        .FirstOrDefault();
+            }
         }
 
         public void AfterInitialize()
@@ -47,14 +59,13 @@ namespace LocustLogistics.Core.AiTasks
 
         public bool ShouldExecute()
         {
-            var behavior = entity.GetBehavior<EntityBehaviorHiveTunable>();
-            if (behavior?.Hive == null) return false;
+            if (member == null || !modSystem.AllMembers.TryGetValue(member, out var hive)) return false;
 
             // Find nearest nest with room
             ILocustNest nearest = null;
             double minDistSq = double.MaxValue;
 
-            foreach (var nest in behavior.Hive.Nests)
+            foreach (var nest in modSystem.HiveNests[hive])
             {
                 if (!nest.HasRoom) continue;
 

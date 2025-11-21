@@ -9,8 +9,8 @@ namespace LocustLogistics.Core.EntityBehaviors
 {
     public class EntityBehaviorHiveTunable : EntityBehavior, IHiveMember
     {
+        int? hiveId;
         AutomataLocustsCore modSystem;
-        public int? HiveId { get; set; }
 
         public Vec3d Position => entity.Pos.XYZ;
 
@@ -24,58 +24,47 @@ namespace LocustLogistics.Core.EntityBehaviors
         public override void Initialize(EntityProperties properties, JsonObject attributes)
         {
             base.Initialize(properties, attributes);
-            if (HiveId.HasValue)
-            {
-                modSystem.GetHive(HiveId.Value).Add(this);
-            }
+            modSystem.Tune(hiveId, this);
         }
 
         public override void OnEntityDespawn(EntityDespawnData despawn)
         {
             base.OnEntityDespawn(despawn);
-
-            // If this was picked up, don't remove from the hive.
-            if (despawn.Reason == EnumDespawnReason.PickedUp) return;
-
-            // If entity dies
-            if (despawn.Reason == EnumDespawnReason.Death || despawn.Reason == EnumDespawnReason.Combusted)
-            {
-                if(HiveId.HasValue) modSystem.GetHive(HiveId.Value)?.Detune(this);
-            }
-            else
-            {
-                // Otherwise, is still part of the hive but just remove it
-                if(HiveId.HasValue) modSystem.GetHive(HiveId.Value)?.Remove(this);
-            }
+             modSystem.Tune(null, this);
 
         }
 
 
         public override void ToBytes(bool forClient)
         {
-            if(HiveId.HasValue)
+            if(hiveId.HasValue)
             {
-                entity.WatchedAttributes.SetInt("hiveId", HiveId.Value);
+                entity.WatchedAttributes.SetInt("hiveId", hiveId.Value);
             }
         }
 
         public override void FromBytes(bool isSync)
         {
-            HiveId = entity.WatchedAttributes.TryGetInt("hiveId");
-            if (HiveId.HasValue && modSystem != null) // If modSystem not set yet, then this is on load. We'll do it on spawn.
-            {
-                modSystem.GetHive(HiveId.Value).Add(this);
-            }
+            var id = entity.WatchedAttributes.TryGetInt("hiveId");
+            // If modSystem not set yet, then this is on-load. We'll do it later in Initialize.
+            if ((id.HasValue != hiveId.HasValue) ||
+                ((id.HasValue && hiveId.HasValue) && id != hiveId)) modSystem?.Tune(id, this);
+
+            // hiveId will get set again in OnTuned. Eh.
+            // This way we don't need a second variable just
+            // for getting this id to Initialize.
+            hiveId = id;
         }
 
         public override void GetInfoText(StringBuilder infotext)
         {
-            infotext.AppendLine($"Hive: {(HiveId == null ? "None" : HiveId)}");
+            infotext.AppendLine($"Hive: {(hiveId == null ? "None" : hiveId)}");
         }
         public override string PropertyName()
         {
             return "hiveworker";
         }
+        public void OnTuned(int? hive) => hiveId = hive;
 
     }
 }
