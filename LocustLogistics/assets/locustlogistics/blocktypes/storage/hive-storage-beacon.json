@@ -1,9 +1,9 @@
 {
-  "code": "locustnest-cage-tamed",
-  "class": "BlockTamedLocustNest",
+  "code": "hive-storage-beacon",
+  "class": "BlockHiveStorageBeacon",
   "entityBehaviors": [
-    { "name": "HiveLocustNest" },
-    { "name": "HiveTunable" }
+    { "name": "HiveTunable" },
+    { "name": "HiveStorageBeacon" }
   ],
   "creativeinventory": {
     "general": [ "*" ],
@@ -11,7 +11,10 @@
   },
   "blockmaterial": "Metal",
   "drawtype": "json",
-  "shape": { "base": "game:block/locustnest/cage/cage1" },
+  "shape": { "base": "game:block/basic/cube" },
+  "textures": {
+    "all": { "base": "game:block/metal/plate/iron" }
+  },
   "lightAbsorption": 0,
   "sidesolid": { "all": false },
   "sideopaque": { "all": false },

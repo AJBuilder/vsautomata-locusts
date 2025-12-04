@@ -1,6 +1,4 @@
-﻿using LocustLogistics.Core.EntityBehaviors;
-using LocustLogistics.Core.Interfaces;
-using System;
+﻿using System;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
@@ -9,7 +7,7 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 
-namespace LocustLogistics.Core.Items
+namespace LocustLogistics.Core
 {
     enum HiveTunerMode
     {
@@ -19,16 +17,13 @@ namespace LocustLogistics.Core.Items
     }
     public class ItemHiveTuner : Item
     {
-        ICoreAPI api;
-        AutomataLocustsCore modSystem;
+        LocustHivesModSystem modSystem;
         SkillItem[] toolModes;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
-
-            this.api = api;
-            modSystem = api.ModLoader.GetModSystem<AutomataLocustsCore>();
+            modSystem = api.ModLoader.GetModSystem<LocustHivesModSystem>();
             ICoreClientAPI capi = api as ICoreClientAPI;
 
 
@@ -124,41 +119,50 @@ namespace LocustLogistics.Core.Items
                 switch (mode)
                 {
                     case HiveTunerMode.Calibrate:
-                        if (modSystem.AllMembers.TryGetValue(target, out var hive))
                         {
-                            attributes.SetInt("calibratedHive", hive);
-                        }
-                        else if (api is ICoreClientAPI capi)
-                        {
-                            capi.TriggerIngameError(this, "No target hive", "Target is not tuned to a Hive.");
+                            if (modSystem.Membership.TryGetValue(target, out var hiveId))
+                            {
+                                attributes.SetInt("calibratedHive", hiveId);
+                                if (api is ICoreClientAPI capi) capi.TriggerIngameDiscovery(this, "Calibrated to hive", $"Calibrated to Hive {hiveId}");
+                            }
+                            else if (api is ICoreClientAPI capi)
+                            {
+                                capi.TriggerIngameError(this, "No target hive", "Target is not tuned to a Hive.");
+                            }
                         }
                         break;
                     case HiveTunerMode.Tune:
-                        var hiveId = attributes.TryGetInt("calibratedHive");
-                        if (hiveId.HasValue)
                         {
-                            modSystem.Tune(hiveId.Value, target);
+                            var hiveId = attributes.TryGetInt("calibratedHive");
+                            if (hiveId.HasValue)
+                            {
+                                modSystem.Tune(hiveId.Value, target);
+                                if (api is ICoreClientAPI capi) capi.TriggerIngameDiscovery(this, "Tuned to hive", $"Tuned to Hive {hiveId.Value}");
 
-                            // Not sure I like this logic here...
-                            // Let's clear the guarded Player/Entity when tuning to a new hive
-                            entitySel?.Entity.WatchedAttributes.RemoveAttribute("guardedPlayerUid");
-                            entitySel?.Entity.WatchedAttributes.RemoveAttribute("guardedEntityId");
-                            entitySel?.Entity.WatchedAttributes.RemoveAttribute("guardedName");
-                        }
-                        else if (api is ICoreClientAPI capi)
-                        {
-                            capi.TriggerIngameError(this, "No calibrated hive", "Not calibrated to any Hive.");
+                                // Not sure I like this logic here...
+                                // Let's clear the guarded Player/Entity when tuning to a new hive
+                                entitySel?.Entity.WatchedAttributes.RemoveAttribute("guardedPlayerUid");
+                                entitySel?.Entity.WatchedAttributes.RemoveAttribute("guardedEntityId");
+                                entitySel?.Entity.WatchedAttributes.RemoveAttribute("guardedName");
+                            }
+                            else if (api is ICoreClientAPI capi)
+                            {
+                                capi.TriggerIngameError(this, "No calibrated hive", "Not calibrated to any Hive.");
+                            }
                         }
                         break;
                     case HiveTunerMode.Zero:
-                        modSystem.Tune(null, target);
+                        {
+                            modSystem.Tune(null, target);
+                            if (api is ICoreClientAPI capi) capi.TriggerIngameDiscovery(this, "Zeroed target", $"Removed Hive tuning.");
 
-                        // Not sure I like this logic here...
-                        // But let's just set the guardedPlayer or guardedEntity whenever we zero
-                        var player = byEntity as EntityPlayer;
-                        if (player != null) entitySel?.Entity.WatchedAttributes.SetString("guardedPlayerUid", player.PlayerUID);
-                        else entitySel?.Entity.WatchedAttributes.SetLong("guardedEntityId", byEntity.EntityId);
-                        entitySel?.Entity.WatchedAttributes.SetString("guardedName", byEntity.GetName() ?? "");
+                            // Not sure I like this logic here...
+                            // But let's just set the guardedPlayer or guardedEntity whenever we zero
+                            var player = byEntity as EntityPlayer;
+                            if (player != null) entitySel?.Entity.WatchedAttributes.SetString("guardedPlayerUid", player.PlayerUID);
+                            else entitySel?.Entity.WatchedAttributes.SetLong("guardedEntityId", byEntity.EntityId);
+                            entitySel?.Entity.WatchedAttributes.SetString("guardedName", byEntity.GetName() ?? "");
+                        }
                         break;
                 }
             }

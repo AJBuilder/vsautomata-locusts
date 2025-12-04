@@ -1,19 +1,29 @@
-﻿using System.Linq;
+﻿using LocustLogistics.Core;
+using LocustLogistics.Logistics.Storage;
+using LocustLogistics.Nests;
+using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.Essentials;
+using Vintagestory.GameContent;
 
-namespace LocustLogistics.TransferItems.AiTasks
+namespace LocustLogistics.Logistics.Retrieval
 {
     public class AiTaskHiveWorkerRetrieve : IAiTask
     {
         float priority;
         EntityAgent entity;
-        float slot;
         AnimationMetaData travellingAnimation;
         AnimationMetaData accessAnimation;
         WaypointsTraverser pathTraverser;
+        RetrievalLogisticsModSystem modSystem;
+        IReadOnlyDictionary<IHiveLogisticsWorker, RetrievalRequest> assignments;
+        LocustHivesModSystem hivesSystem;
+        IHiveLogisticsWorker member;
+        RetrievalRequest request;
+        bool pathfindingActive;
 
 
         public string Id => "logisticsorder";
@@ -31,7 +41,6 @@ namespace LocustLogistics.TransferItems.AiTasks
         {
             this.entity = entity;
             priority = taskConfig["priority"].AsFloat();
-            slot = (int)taskConfig["slot"]?.AsInt(0);
 
             JsonObject travellingAnimationCode = taskConfig["travellingAnimation"];
             if (travellingAnimationCode.Exists)
@@ -49,39 +58,83 @@ namespace LocustLogistics.TransferItems.AiTasks
 
             // TODO: Sounds for travelling, access, and finishing
 
+            pathTraverser = entity.GetBehavior<EntityBehaviorTaskAI>().PathTraverser;
+            modSystem = entity.Api.ModLoader.GetModSystem<RetrievalLogisticsModSystem>();
+            assignments = modSystem.Assignments;
         }
-
 
         public void AfterInitialize()
         {
+            member = entity as IHiveLogisticsWorker;
+            if (member == null)
+            {
+                member = entity
+                        .SidedProperties
+                        .Behaviors
+                        .OfType<IHiveLogisticsWorker>()
+                        .FirstOrDefault();
+            }
+        }
+
+        public bool ShouldExecute()
+        {
+            if (member == null ||
+                !assignments.TryGetValue(member, out request)) return false;
+
+            return false;
+        }
+
+        public void StartExecute()
+        {
+            if (request == null) return;
+
+            pathfindingActive = true;
+
+            if (travellingAnimation != null)
+            {
+                entity.AnimManager?.StartAnimation(travellingAnimation);
+            }
+
+            pathTraverser.NavigateTo_Async(
+                request.From.Position,
+                0.02f,
+                1.0f,
+                OnGoalReached,
+                OnStuck
+            );
         }
 
         public bool CanContinueExecute()
         {
-            return ShouldExecute();
+            return true;
         }
 
         public bool ContinueExecute(float dt)
         {
-            return true;
+            // Finish if no longer pathfinding.
+            return pathfindingActive;
         }
 
         public void FinishExecute(bool cancelled)
         {
             pathTraverser.Stop();
+            pathfindingActive = false;
+
+            if (travellingAnimation != null)
+            {
+                entity.AnimManager?.StopAnimation(travellingAnimation.Code);
+            }
+
         }
 
-        public bool ShouldExecute()
+        private void OnGoalReached()
         {
-            // Return true if there is a retrieve order for this
-            return true;
+            pathfindingActive = false;
         }
 
-        public void StartExecute()
+        private void OnStuck()
         {
-            //pathTraverser.NavigateTo_Async(retrieveStack.From.Position, 1f, 1.1f, () =>
-            //{
-            //}, null);
+            pathfindingActive = false;
         }
 
         public bool Notify(string key, object data)
@@ -108,6 +161,5 @@ namespace LocustLogistics.TransferItems.AiTasks
         public void OnStateChanged(EnumEntityState beforeState)
         {
         }
-
     }
 }

@@ -1,32 +1,21 @@
-﻿using HarmonyLib;
-using LocustLogistics.Core;
-using LocustLogistics.Core.Interfaces;
+﻿using LocustLogistics.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.GameContent;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace LocustLogistics.Core.BlockEntities
+namespace LocustLogistics.Nests
 {
-    public class BETamedLocustNest : BlockEntity, IHiveMember
+    public class BEBehaviorHiveLocustNest : BlockEntityBehavior, ILocustNest
     {
-        int? hiveId;
-        AutomataLocustsCore modSystem;
         List<(string code, byte[] data)> storedLocustData;
-
-        public BETamedLocustNest()
-        {
-            storedLocustData = new List<(string code, byte[] data)>();
-        }
 
         public IEnumerable<EntityLocust> StoredLocusts
         {
@@ -37,33 +26,35 @@ namespace LocustLogistics.Core.BlockEntities
                 foreach (var (code, data) in storedLocustData) yield return CreateEntityClass(code, data);
             }
         }
-
         public int MaxCapacity => 5;
         public bool HasRoom => storedLocustData.Count < MaxCapacity;
 
-        public Vec3d Position => Pos.ToVec3d();
+        public Vec3d Position => Pos.ToVec3d().Add(0.5f, -0.5f, 0.5f);
 
-        public int Dimension => Pos.dimension;
+        public int Dimension => Blockentity.Pos.dimension;
 
-        public override void Initialize(ICoreAPI api)
+        public BEBehaviorHiveLocustNest(BlockEntity blockentity) : base(blockentity)
         {
-            base.Initialize(api);
-            modSystem = api.ModLoader.GetModSystem<AutomataLocustsCore>();
+            storedLocustData = new List<(string code, byte[] data)>();
+        }
 
-            if (!hiveId.HasValue) hiveId = modSystem.CreateHive();
-            modSystem.Tune(hiveId, this);
+        public override void Initialize(ICoreAPI api, JsonObject properties)
+        {
+            base.Initialize(api, properties);
+            var modSystem = api.ModLoader.GetModSystem<LocustNestModSystem>();
+            Blockentity.GetBehavior<BEBehaviorHiveTunable>().OnTuned += (int? prevHive, int? hive) =>
+            {
+                modSystem.UpdateNestHiveMembership(this, prevHive, hive);
+            };
         }
 
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
-            modSystem.Tune(null, this);
-        }
-
-        public override void OnBlockUnloaded()
-        {
-            base.OnBlockUnloaded();
-            modSystem.Tune(null, this);
+            for(var i = storedLocustData.Count; i > 0; i--)
+            {
+                TryUnstoreLocust(i);
+            }
         }
 
         public bool TryStoreLocust(EntityLocust locust)
@@ -79,7 +70,7 @@ namespace LocustLogistics.Core.BlockEntities
             // Despawn the locust from the world
             locust.Die(EnumDespawnReason.PickedUp, null);
 
-            MarkDirty(true);
+            Blockentity.MarkDirty(true);
             return true;
         }
 
@@ -95,13 +86,13 @@ namespace LocustLogistics.Core.BlockEntities
             var entity = CreateEntityClass(code, data);
 
             // Spawn the entity at the nest position
+            entity.ServerPos.SetPosWithDimension(Position);
             entity.Pos.SetFrom(entity.ServerPos);
-            entity.ServerPos.SetPosWithDimension(Pos.ToVec3d());
             Api.World.SpawnEntity(entity);
 
             entity.Attributes.SetLong("unstoredMs", Api.World.ElapsedMilliseconds);
 
-            MarkDirty(true);
+            Blockentity.MarkDirty(true);
             return true;
         }
 
@@ -116,8 +107,6 @@ namespace LocustLogistics.Core.BlockEntities
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
-            if (hiveId.HasValue) tree.SetInt("hiveId", hiveId.Value);
-
             for (int i = 0; i < storedLocustData.Count; i++)
             {
                 var (code, data) = storedLocustData[i];
@@ -130,16 +119,6 @@ namespace LocustLogistics.Core.BlockEntities
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
-
-            var id = tree.TryGetInt("hiveId");
-            // If modSystem not set yet, then this is on-load. We'll do it later in Initialize.
-            if ((id.HasValue != hiveId.HasValue) ||
-                ((id.HasValue && hiveId.HasValue) && id != hiveId)) modSystem?.Tune(id, this);
-
-            // hiveId is already set in OnTuned. Eh.
-            // This way we don't need a second variable just
-            // for getting this id to Initialize.
-            hiveId = id;
 
             int count = tree.GetInt("locustCount");
 
@@ -155,11 +134,9 @@ namespace LocustLogistics.Core.BlockEntities
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
+            base.GetBlockInfo(forPlayer, dsc);
             dsc.AppendLine($"Locusts: {storedLocustData.Count}/{MaxCapacity}");
-            dsc.AppendLine($"Hive: {(hiveId.HasValue ? hiveId.Value : "None")}");
         }
-
-        public void OnTuned(int? hive) => hiveId = hive;
 
     }
 }
