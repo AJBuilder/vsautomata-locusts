@@ -31,7 +31,7 @@ namespace LocustHives.Game.Nest
             this.entity = entity;
             entity.Attributes.SetLong("unstoredMs", 0);
 
-            moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
+            moveSpeed = taskConfig["movespeed"].AsFloat(0.02f);
 
             membership = entity.Api.ModLoader.GetModSystem<TuningSystem>().Membership;
             nestMembership = entity.Api.ModLoader.GetModSystem<NestsSystem>().Membership;

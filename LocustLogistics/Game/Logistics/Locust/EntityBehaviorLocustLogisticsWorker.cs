@@ -267,9 +267,9 @@ namespace LocustHives.Game.Logistics.Locust
 
             if (operation == LogisticsOperation.Take)
             {
-                // Check for room and bail if we don't have room
+                // Check for room, bail if we don't have any.
                 uint canAccept = inventory.CanAccept(stack);
-                if (canAccept == 0) yield break;
+                if (canAccept < stack.StackSize) yield break;
 
 
                 foreach(var method in target.AccessMethods)
@@ -411,6 +411,15 @@ namespace LocustHives.Game.Logistics.Locust
                     }
                 }
             }
+        }
+
+        public override void OnEntityDeath(DamageSource damageSourceForDeath)
+        {
+            if (entity.World.Side == EnumAppSide.Server)
+            {
+                inventory.DropAll(entity.ServerPos.XYZ);
+            }
+            base.OnEntityDeath(damageSourceForDeath);
         }
 
         public override void GetInfoText(StringBuilder infotext)

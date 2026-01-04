@@ -53,5 +53,10 @@ namespace LocustHives.Systems.Logistics
             clone.StackSize = size;
             return clone;
         }
+
+        public static BlockPos InBlockPos(this Vec3d pos)
+        {
+            return new BlockPos((int)Math.Floor(pos.X), (int)Math.Floor(pos.Y), (int)Math.Floor(pos.Z));
+        }
     }
 }
