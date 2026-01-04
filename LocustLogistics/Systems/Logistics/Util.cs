@@ -24,8 +24,8 @@ namespace LocustHives.Systems.Logistics
             return (uint)inventory.Sum(slot =>
             {
                 var s = slot.Itemstack;
-                if (s == null) return stack.Item.MaxStackSize;
-                else return s.Equals(stack) ? Math.Max(0, stack.Item.MaxStackSize - s.StackSize) : 0;
+                if (s == null) return stack.Collectible.MaxStackSize;
+                else return s.Equals(stack) ? Math.Max(0, stack.Collectible.MaxStackSize - s.StackSize) : 0;
             });
         }
 
@@ -40,7 +40,7 @@ namespace LocustHives.Systems.Logistics
             return (uint)inventory.Sum(slot =>
             {
                 var s = slot.Itemstack;
-                if (s == null || !s.Equals(stack)) return 0;
+                if (s == null || !s.Satisfies(stack)) return 0;
                 else return s.StackSize;
             });
         }

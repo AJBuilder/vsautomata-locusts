@@ -77,10 +77,6 @@ namespace LocustHives.Game.Core
                     if(be != null)
                     {
                         target = be.GetAs<IHiveMember>();
-                        if (target != null)
-                        {
-                            be.MarkDirty();
-                        }
                     }
                 }
             }
@@ -99,6 +95,7 @@ namespace LocustHives.Game.Core
                 {
                     handling = EnumHandHandling.PreventDefaultAction;
                     attributes.RemoveAttribute("calibratedHive");
+                    if (api is ICoreClientAPI capi) capi.ShowChatMessage($"Cleared calibration.");
                 }
             }
             else
@@ -109,14 +106,17 @@ namespace LocustHives.Game.Core
                 {
                     case HiveTunerMode.Calibrate:
                         {
-                            if (modSystem.Membership.GetMembershipOf(target, out var hiveId))
+                            if (api is ICoreClientAPI capi) {
+                                if (target.LocalHiveId.HasValue)
+                                {
+                                    capi.ShowChatMessage($"Calibrated to Hive {target.LocalHiveId.Value}");
+                                    attributes.SetInt("calibratedHive", target.LocalHiveId.Value);
+                                }
+                                else capi.TriggerIngameError(this, "No target hive", "Target is not tuned to a Hive.");
+                            }
+                            else if (modSystem.Membership.GetMembershipOf(target, out var hiveId))
                             {
                                 attributes.SetInt("calibratedHive", hiveId);
-                                if (api is ICoreClientAPI capi) capi.ShowChatMessage($"Calibrated to Hive {hiveId}");
-                            }
-                            else if (api is ICoreClientAPI capi)
-                            {
-                                capi.TriggerIngameError(this, "No target hive", "Target is not tuned to a Hive.");
                             }
                         }
                         break;
@@ -125,8 +125,14 @@ namespace LocustHives.Game.Core
                             var hiveId = attributes.TryGetInt("calibratedHive");
                             if (hiveId.HasValue)
                             {
-                                modSystem.Tune(target, hiveId.Value);
-                                if (api is ICoreClientAPI capi) capi.ShowChatMessage($"Tuned to Hive {hiveId.Value}");
+                                if(api is ICoreClientAPI capi)
+                                {
+                                    capi.ShowChatMessage($"Tuned to Hive {hiveId.Value}");
+                                }
+                                else
+                                {
+                                    modSystem.Tune(target, hiveId.Value);
+                                }
 
                                 // Not sure I like this logic here...
                                 // Let's clear the guarded Player/Entity when tuning to a new hive
@@ -142,8 +148,8 @@ namespace LocustHives.Game.Core
                         break;
                     case HiveTunerMode.Zero:
                         {
-                            modSystem.Tune(target, null);
                             if (api is ICoreClientAPI capi) capi.TriggerIngameDiscovery(this, "Zeroed target", $"Removed Hive tuning.");
+                            else modSystem.Tune(target, null);
 
                             // Not sure I like this logic here...
                             // But let's just set the guardedPlayer or guardedEntity whenever we zero

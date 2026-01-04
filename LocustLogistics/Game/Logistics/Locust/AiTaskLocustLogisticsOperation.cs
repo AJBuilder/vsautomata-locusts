@@ -53,7 +53,7 @@ namespace LocustHives.Game.Logistics.Locust
             base.StartExecute();
 
             pathfindingActive = pathTraverser.NavigateTo_Async(
-                Systems.Logistics.Util.GetTargetPosForMethod(curTask.method).ToVec3d().Add(0.5f, -0.5f, 0.5f),
+                Systems.Logistics.Util.GetTargetPosForMethod(curTask.method).ToVec3d(),
                 moveSpeed,
                 0.5f,
                 OnGoalReached,

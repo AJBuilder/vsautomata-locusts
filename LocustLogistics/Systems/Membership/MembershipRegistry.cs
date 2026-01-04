@@ -48,8 +48,10 @@ namespace LocustHives.Systems.Membership
             if (membershipByMembers.TryGetValue(member, out var old))
             {
                 oldMembership = old;
+                if (oldMembership == membership) return oldMembership; // Already a member.
                 membersByMembership[old].Remove(member);
             }
+            else if (!membership.HasValue) return null; // Already has no membership
 
             if (membership.HasValue)
             {
@@ -68,24 +70,5 @@ namespace LocustHives.Systems.Membership
             MemberAssigned?.Invoke(member, oldMembership, membership);
             return oldMembership;
         }
-
-        private void AddMemberNoCheck(T member, int membership)
-        {
-        }
-
-
-        public bool AddMember(T member, int membership)
-        {
-            if (membershipByMembers.TryGetValue(member, out var currentMembership))
-            {
-                // Fail if already has a different membership
-                if(currentMembership != membership) return false;
-                return true; // no op if already a member
-            }
-            AddMemberNoCheck(member, membership);
-            return true;
-        }
-
-
     }
 }

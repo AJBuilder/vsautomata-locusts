@@ -19,7 +19,7 @@ namespace LocustHives.Game.Logistics
     /// </summary>
     public class LogisticsSystem : ModSystem
     {
-        ICoreAPI api;
+        ICoreServerAPI sapi;
 
         MembershipRegistry<ILogisticsWorker> workerRegistry;
         MembershipRegistry<ILogisticsStorage> storageRegistry;
@@ -31,25 +31,25 @@ namespace LocustHives.Game.Logistics
 
         public override void Start(ICoreAPI api)
         {
-            this.api = api;
             api.RegisterEntityBehaviorClass("hivelogisticsworker", typeof(EntityBehaviorLocustLogisticsWorker));
 
             api.RegisterBlockEntityBehaviorClass("HiveAccessPort", typeof(BEBehaviorHiveAccessPort));
             api.RegisterBlockEntityBehaviorClass("HivePushBeacon", typeof(BEBehaviorHivePushBeacon));
             api.RegisterBlockClass("BlockHivePushBeacon", typeof(BlockHivePushBeacon));
-
-            workerRegistry = new MembershipRegistry<ILogisticsWorker>();
-            storageRegistry = new MembershipRegistry<ILogisticsStorage>();
         }
 
-        public override void StartServerSide(ICoreServerAPI api)
+        public override void StartServerSide(ICoreServerAPI sapi)
         {
-            base.StartServerSide(api);
+            base.StartServerSide(sapi);
+            this.sapi = sapi;
             AiTaskRegistry.Register<AiTaskLocustLogisticsOperation>("doLogisticsAccessTasks");
 
-            networks = new Dictionary<int, LogisticsNetwork>();
+            this.workerRegistry = new MembershipRegistry<ILogisticsWorker>();
+            this.storageRegistry = new MembershipRegistry<ILogisticsStorage>();
 
-            api.Event.RegisterGameTickListener((dt) =>
+            this.networks = new Dictionary<int, LogisticsNetwork>();
+
+            sapi.Event.RegisterGameTickListener((dt) =>
             {
                 foreach (var network in networks.Values)
                 {
@@ -62,7 +62,6 @@ namespace LocustHives.Game.Logistics
                     }
                 }
             }, 3000);
-
         }
 
 
@@ -81,11 +80,11 @@ namespace LocustHives.Game.Logistics
 
         public void EnsureNetwork(int hiveId)
         {
-            if (api is ICoreServerAPI && !networks.ContainsKey(hiveId))
+            if (!networks.ContainsKey(hiveId))
             {
                 var workers = workerRegistry.GetMembersOf(hiveId);
                 var storages = storageRegistry.GetMembersOf(hiveId);
-                networks[hiveId] = new LogisticsNetwork(api, workers, storages);
+                networks[hiveId] = new LogisticsNetwork(sapi, workers, storages);
             }
         }
 
@@ -151,6 +150,5 @@ namespace LocustHives.Game.Logistics
 
             api.Logger.Notification("[LocustLogistics] Added AI tasks to locust-hacked entity");
         }
-
     }
 }

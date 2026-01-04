@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 
@@ -13,8 +14,15 @@ namespace LocustHives.Game.Core
 
         public Action<int?, int?> OnTuned { get; set; }
 
+        public int? LocalHiveId => hiveId;
+
         public BEBehaviorLocustHiveTunable(BlockEntity blockentity) : base(blockentity)
         {
+            OnTuned += (_, newId) =>
+            {
+                hiveId = newId;
+                blockentity.MarkDirty();
+            };
         }
 
 
@@ -22,22 +30,17 @@ namespace LocustHives.Game.Core
         {
             base.Initialize(api, properties);
 
-            OnTuned += (_, newId) =>
-            {
-                hiveId = newId;
-            };
-
-            modSystem = api.ModLoader.GetModSystem<TuningSystem>();
-
             if (api is ICoreServerAPI)
             {
+                // We set the modsystem in initialize so that we don't call Tune in FromTreeAttributes.
+                modSystem = api.ModLoader.GetModSystem<TuningSystem>();
                 if (!hiveId.HasValue && properties["createsHive"].AsBool()) hiveId = modSystem.CreateHive();
-            }
 
-            // Kinda hacky, but we have to delay tuning so that other behaviors have a chanto register to the OnTuned event.
-            api.Event.RegisterCallback((dt) => {
-                modSystem.Tune(this, hiveId);
-            }, 0);
+                // Kinda hacky, but we have to delay tuning so that other behaviors have a chance to register to the OnTuned event.
+                api.Event.RegisterCallback((dt) => {
+                    modSystem.Tune(this, hiveId);
+                }, 0);
+            }
         }
 
         public override void OnBlockRemoved()
@@ -62,12 +65,11 @@ namespace LocustHives.Game.Core
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
-
             var id = tree.TryGetInt("hiveId");
-            // If modSystem not set yet, then this is on-load or the client. If on-load we'll do it later in Initialize.
+            // If modSystem not set yet, then this is on-load or the client. If on-load, we'll do it later in Initialize.
             if (modSystem == null) hiveId = id;
             else if (id.HasValue != hiveId.HasValue ||
-                id.HasValue && hiveId.HasValue && id != hiveId) modSystem?.Tune(this, id);
+                id.HasValue && hiveId.HasValue && id != hiveId) modSystem.Tune(this, id);
         }
 
 

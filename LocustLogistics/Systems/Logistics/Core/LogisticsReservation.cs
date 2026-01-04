@@ -1,5 +1,6 @@
 ﻿using LocustHives.Systems.Logistics.Core.Interfaces;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -37,6 +38,7 @@ namespace LocustHives.Systems.Logistics.Core
 
         public LogisticsReservation(ItemStack stack, ILogisticsStorage targetStorage, LogisticsOperation operation  )
         {
+            Stack = stack;
             TargetStorage = targetStorage;
             Operation = operation;
         }

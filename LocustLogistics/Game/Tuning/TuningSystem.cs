@@ -34,8 +34,6 @@ namespace LocustHives.Game.Core
             api.RegisterItemClass("ItemHiveTuner", typeof(ItemHiveTuner));
             api.RegisterEntityBehaviorClass("hivetunable", typeof(EntityBehaviorHiveTunable));
             api.RegisterBlockEntityBehaviorClass("HiveTunable", typeof(BEBehaviorLocustHiveTunable));
-
-            baseRegistry = new MembershipRegistry<IHiveMember>();
         }
 
         public override void StartServerSide(ICoreServerAPI api)
@@ -52,6 +50,8 @@ namespace LocustHives.Game.Core
             //        AssignOrQueuePromise(queuedRequests.Dequeue());
             //    }
             //}, 3000);
+
+            baseRegistry = new MembershipRegistry<IHiveMember>();
 
             api.Event.GameWorldSave += () =>
             {

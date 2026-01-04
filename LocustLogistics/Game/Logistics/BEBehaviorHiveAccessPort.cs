@@ -19,6 +19,7 @@ namespace LocustHives.Game.Logistics
 
     public class BEBehaviorHiveAccessPort : BlockEntityBehavior, ILogisticsStorage
     {
+        // Faces towards the inventory. Access opening is opposite of facing.
         BlockFacing facing;
         HashSet<LogisticsReservation> reservations;
 
@@ -37,7 +38,7 @@ namespace LocustHives.Game.Logistics
         {
             get
             {
-                yield return new BlockFaceAccessible(Blockentity.Pos, facing, 0, CanDo);
+                yield return new BlockFaceAccessible(Blockentity.Pos, facing.Opposite, 0, CanDo);
             }
         }
 
@@ -61,7 +62,7 @@ namespace LocustHives.Game.Logistics
                 };
             }
 
-            if (api is IServerAPI)
+            if (api is ICoreServerAPI)
             {
                 reservations = new HashSet<LogisticsReservation>();
             }
@@ -85,13 +86,15 @@ namespace LocustHives.Game.Logistics
 
         private uint CanDo(ItemStack stack, LogisticsOperation op)
         {
-            var reserved = (uint)reservations.Where(r => r.Stack.Equals(stack) && r.Operation == op).Sum(r => r.Stack.StackSize);
+            var inventory = Inventory;
+            if (inventory == null) return 0;
+            var reserved = (uint)reservations.Where(r => r.Stack.Satisfies(stack) && r.Operation == op).Sum(r => r.Stack.StackSize);
             var able = op switch
             {
-                LogisticsOperation.Take => Inventory.CanProvide(stack),
-                LogisticsOperation.Give => Inventory.CanAccept(stack),
+                LogisticsOperation.Take => inventory.CanProvide(stack),
+                LogisticsOperation.Give => inventory.CanAccept(stack),
             };
-            return Math.Min(0, able - reserved);
+            return Math.Max(0, able - reserved);
         }
     }
 }

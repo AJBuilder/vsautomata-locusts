@@ -1,16 +1,10 @@
 ﻿using LocustHives.Systems.Logistics.Core.Interfaces;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Security.Authentication.ExtendedProtection;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using static Vintagestory.Server.Timer;
 
 namespace LocustHives.Systems.Logistics.Core
 {
@@ -40,125 +34,19 @@ namespace LocustHives.Systems.Logistics.Core
             Storages = storage;
         }
 
-                //.Select(t =>
-                //{
-                //    var bestWorker =
-                //        Workers
-                //            .Select(w => (
-                //                worker: w,
-                //                effort: w.GetEfforts(
-                //                    promise.Stack,
-                //                    promise.TargetStorage,
-                //                    LogisticsOperation.Take)))
-                //            .Where(x => x.effort != null)
-                //            .MaxBy(x =>
-                //                x.effort!.time /
-                //                Math.Min(x.effort.count, t.storageEffort));
-                //
-                //    return (
-                //        storage: t.storage,
-                //        bestWorker
-                //    );
-                //});
-
-                // Optimization idea: instead of find the absolute best access time, we can stop if we find one that is "acceptable".
-                // Acceptable could be a changing calculated threshold based on the historic performance of the network?
-                //.OrderBy(tuple => tuple.time!.Value)
-                //.TakeWhile(_ => countLeftover > 0)
-                //.Foreach(tuple =>
-                //{
-                //    // If this worker can fulfill the promise alone, then use the original promise.
-                //    // If it can't, then create a child promise that will fulfill it partially.
-                //    var givePromise = tuple.bestEffort >= countLeftover ? promise : promise.CreateChild(Math.Min(countLeftover, tuple.bestEffort));
-                //    if (tuple.worker.Ask(givePromise))
-                //    {
-                //        // If accepted, decrement the counter
-                //        countLeftover -= tuple.itemCount;
-                //    }
-                //    else
-                //    {
-                //        // Should be unecessary, but just incase the worker is listening for some reason...
-                //        givePromise.Cancel();
-                //    }
-                //});
-
-                // If not, then we try to take from storage.
-                // For each storage, score how suitable each transfer scenario between each of it's and the target's methods and how many items it would fulfill.
-                //var allStorages = storageSystem.GetHiveStorages(hive);
-                //allStorages
-                //    .Select(storage => (storage, itemCount: storage.Inventory.Where(slot => slot.Itemstack.Equals(promise.Stack)).Sum(stack => stack.StackSize)))
-                //    .Where(storageWithItemCount => storageWithItemCount.itemCount > 0) // Skip storages without the item
-                //    .Select(storageWithItemCount =>
-                //        // Yield the pair of access methods that will presumably be the fastest
-                //        // to transfer from the source to the target.
-                //        (storageWithItemCount.storage,
-                //        storageWithItemCount.itemCount,
-                //        transferMethod: promise.Target.AccessMethods
-                //            .SelectMany(targetMethod =>
-                //                storageWithItemCount.storage.AccessMethods.Select(sourceMethod =>
-                //                {
-                //                    // score of 0: bad but viable
-                //                    // score of 1: perfect
-                //                    // score of null: not viable
-                //                    float? score = sourceMethod switch
-                //                    {
-                //                        InWorldStorageAccessMethod ba => 1 / ((float)ba.DistanceTo(targetMethod) + 1), // For in world, we assume proximity is a good heuristic: 1/(dist+1)
-                //                        _ => null
-                //                    };
-                //                    if (score.HasValue) score = Math.Clamp(score.Value, 0, 1);
-                //
-                //                    return (targetMethod, sourceMethod, score);
-                //                })
-                //            )
-                //            .Where(x => x.score.HasValue)
-                //            .MinBy(x => x.score!.Value))
-                //    )
-                //    .OrderByDescending(scenario => scenario.transferMethod.score)
-                //    .TakeWhile(_ => countLeftover > 0)
-                //    .Foreach(scenario =>
-                //    {
-                //        // Find the best worker for this transfer scenario
-                //        var bestWorker = allWorkers
-                //            .Select(w => (worker: w, time: w.GetAccessTime(scenario.storage)))
-                //            .Where(x => x.time.HasValue)
-                //            .MinBy(x => x.time.Value).worker;
-                //
-                //        // If we couldn't find a worker for this scenario
-                //        if (bestWorker == null) return;
-                //
-                //        // Otherwise we want it to take from the source storage
-                //        var stack = promise.Stack.GetEmptyClone();
-                //        stack.StackSize = scenario.itemCount;
-                //        var takePromise = new LogisticsPromise(stack, scenario.storage, LogisticsOperation.Take);
-                //        if (bestWorker.TryAssignPromise(takePromise))
-                //        {
-                //            // If accepted, decrement the counter
-                //            countLeftover -= scenario.itemCount;
-                //
-                //            // Listen for when it is completed, and if so
-                //        }
-                //        else
-                //        {
-                //            // Should be unecessary, but just incase the worker is listening for some reason...
-                //            takePromise.Cancel();
-                //        }
-                //    });
-
-
-                ///// OLD
-
-                // Iterate over every scenario for each worker going to one storage for it's items. (Or no storage)
-
         public LogisticsPromise Push(ItemStack stack, ILogisticsStorage from)
         {
-            var promise = new LogisticsPromise(stack, from, LogisticsOperation.Take);
-            queuedPromises.Enqueue(promise);
-            return promise;
+            return Request(stack, from, LogisticsOperation.Take);
         }
 
         public LogisticsPromise Pull(ItemStack stack, ILogisticsStorage into)
         {
-            var promise = new LogisticsPromise(stack, into, LogisticsOperation.Give);
+            return Request(stack, into, LogisticsOperation.Give);
+        }
+
+        public LogisticsPromise Request(ItemStack stack, ILogisticsStorage target, LogisticsOperation operation)
+        {
+            var promise = new LogisticsPromise(stack, target, operation);
             queuedPromises.Enqueue(promise);
             return promise;
         }
@@ -169,8 +57,15 @@ namespace LocustHives.Systems.Logistics.Core
         /// </summary>
         /// <returns></returns>
         public void CommisionWorkersForNextQueuedPromise() {
+            // If no workers, can't do anything
+            if (!Workers.Any()) return;
 
             var promise = queuedPromises.Dequeue();
+            if(promise.State != LogisticsPromiseState.Unfulfilled)
+            {
+                countCommissioned.Remove(promise);
+            }
+
             var countLeft = (uint)promise.Stack.StackSize - countCommissioned.GetValueOrDefault(promise);
             while (countLeft >= 0)
             {
@@ -212,10 +107,10 @@ namespace LocustHives.Systems.Logistics.Core
                         // If the worker cancels on us, re-queue.
                         if (state == LogisticsPromiseState.Cancelled)
                         {
-                            // Requeue if needed
-                            if (!queuedPromises.Contains(promise)) queuedPromises.Enqueue(promise);
                             // Remove this count as being commissioned
                             countCommissioned[promise] = countCommissioned.GetValueOrDefault(promise) + countPromised;
+                            // Requeue if needed
+                            if (!queuedPromises.Contains(promise)) queuedPromises.Enqueue(promise);
                         }
                     };
                 }

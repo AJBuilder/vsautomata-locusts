@@ -44,7 +44,7 @@ namespace LocustHives.Game.Logistics
     //}
 
 
-    public class BEBehaviorHivePushBeacon : BEBehaviorHiveAccessPort
+    public class BEBehaviorHivePushBeacon : BlockEntityBehavior
     {
         BlockFacing facing;
         LogisticsSystem modSystem;
@@ -106,18 +106,19 @@ namespace LocustHives.Game.Logistics
             CancelAll();
             foreach (var slot in inventory)
             {
-                if(!slot.Empty) TryPush(slot.Itemstack);
+                if(!slot.Empty) TryPush(AttachedStorage, slot.Itemstack);
             }
         }
 
         public void CancelAll()
         {
             requests.ForEach(r => r.Cancel());
+            Blockentity.MarkDirty();
         }
 
-        private bool TryPush(ItemStack stack)
+        private bool TryPush(ILogisticsStorage storage, ItemStack stack)
         {
-            var request = Network?.Push(stack, this);
+            var request = Network?.Push(stack, storage);
             if (request == null) return false;
 
             request.CompletedEvent += (state) =>
@@ -126,6 +127,7 @@ namespace LocustHives.Game.Logistics
             };
 
             requests.Add(request);
+            Blockentity.MarkDirty();
             return true;
         }
 

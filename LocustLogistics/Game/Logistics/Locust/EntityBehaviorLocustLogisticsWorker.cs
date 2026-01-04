@@ -53,7 +53,7 @@ namespace LocustHives.Game.Logistics.Locust
                 if (toTransfer <= 0) break;
 
                 // and if it has the item
-                if (fromSlot.Itemstack.Equals(stack))
+                if (fromSlot.Itemstack?.Satisfies(stack) ?? false)
                 {
                     // and while it isn't empty
                     while (!fromSlot.Empty)
@@ -118,7 +118,6 @@ namespace LocustHives.Game.Logistics.Locust
                 }
             };
             (entity as EntityAgent).LeftHandItemSlot = inventory[0];
-
         }
 
         public override void Initialize(EntityProperties properties, JsonObject attributes)
@@ -128,15 +127,15 @@ namespace LocustHives.Game.Logistics.Locust
             ITreeAttribute tree = entity.WatchedAttributes["mouthInv"] as ITreeAttribute;
             if (tree != null) inventory.FromTreeAttributes(tree);
 
-            if(entity.Api is IServerAPI)
+            if (entity.Api is ICoreServerAPI)
             {
-                entity.GetBehavior<EntityBehaviorHiveTunable>().OnTuned += (prevHive, hive) =>
-                {
-                    entity.Api.ModLoader.GetModSystem<LogisticsSystem>().UpdateLogisticsWorkerMembership(this, hive);
-                };
-
                 logisticsSystem = entity.Api.ModLoader.GetModSystem<LogisticsSystem>();
                 pathfindSystem = entity.Api.ModLoader.GetModSystem<PathfindSystem>();
+
+                entity.GetBehavior<EntityBehaviorHiveTunable>().OnTuned += (prevHive, hive) =>
+                {
+                    logisticsSystem.UpdateLogisticsWorkerMembership(this, hive);
+                };
             }
         }
         public override void OnReceivedServerPacket(int packetid, byte[] data, ref EnumHandling handled)
@@ -197,7 +196,7 @@ namespace LocustHives.Game.Logistics.Locust
             ItemStack stackForPromise,
             ILogisticsStorage promiseTarget,
             LogisticsOperation promiseOperation,
-            (IStorageAccessMethod method, LogisticsOperation operation, uint count)[] accessTasks)
+            (ILogisticsStorage storage, IStorageAccessMethod method, LogisticsOperation operation, uint count)[] accessTasks)
         {
             return new WorkerEffort(bestCount, time, (requestedCount) =>
             {
@@ -247,7 +246,14 @@ namespace LocustHives.Game.Logistics.Locust
                 for (int i = 0; i < accessTasks.Length; i++)
                 {
                     var at = accessTasks[i];
-                    queuedStorageAccess.Enqueue(new AccessTask { method = at.method, stack = reservations[i].Stack, operation = at.operation });
+                    queuedStorageAccess.Enqueue(new AccessTask {
+                        storage = at.storage,
+                        method = at.method,
+                        stack = reservations[i].Stack,
+                        operation = at.operation,
+                        // If this task operates on the target with the correct operation, it should fulfill the promise.
+                        promise = promiseTarget == at.storage && promiseOperation == at.operation ? promise : null,
+                    });
                 }
 
                 return promise;
@@ -289,6 +295,7 @@ namespace LocustHives.Game.Logistics.Locust
                         LogisticsOperation.Take,
                         [
                             (
+                                target,
                                 method,
                                 LogisticsOperation.Take,
                                 toTransfer
@@ -304,10 +311,10 @@ namespace LocustHives.Game.Logistics.Locust
 
                 // If we still need more items, we have one strategy for now: search storages of the hive this worker is in for stuff to take first.
                 // For now we'll just compute a single stop at another storage.
-                List<(IStorageAccessMethod method, uint canProvide)> potentialTakeOps = null;
+                List<(ILogisticsStorage storage, IStorageAccessMethod method, uint canProvide)> potentialTakeOps = null;
                 if(missingCount != 0)
                 {
-                    potentialTakeOps = new List<(IStorageAccessMethod, uint)>();
+                    potentialTakeOps = new List<(ILogisticsStorage, IStorageAccessMethod, uint)>();
 
                     // But we can only take so much
                     uint canAccept = inventory.CanAccept(stack);
@@ -321,7 +328,7 @@ namespace LocustHives.Game.Logistics.Locust
                             foreach (var method in storage.AccessMethods)
                             {
                                 potentialTakeCount = method.CanDo(takeStack, LogisticsOperation.Take);
-                                if (potentialTakeCount != 0) potentialTakeOps.Append((method, potentialTakeCount));
+                                if (potentialTakeCount != 0) potentialTakeOps.Append((storage, method, potentialTakeCount));
                             }
                         }
                     }
@@ -345,7 +352,7 @@ namespace LocustHives.Game.Logistics.Locust
                     if (potentialTakeOps != null)
                     {
                         // yield efforts that have a task to take first from another storage
-                        foreach (var (takeMethod, toTake) in potentialTakeOps)
+                        foreach (var (takeStorage, takeMethod, toTake) in potentialTakeOps)
                         {
                             var takePos = Systems.Logistics.Util.GetTargetPosForMethod(takeMethod);
                             if (takePos == null) continue;
@@ -359,11 +366,13 @@ namespace LocustHives.Game.Logistics.Locust
                                 LogisticsOperation.Take,
                                 [
                                     (
+                                        takeStorage,
                                         takeMethod,
                                         LogisticsOperation.Take,
                                         toTake
                                     ),
                                     (
+                                        target,
                                         method,
                                         LogisticsOperation.Give,
                                         toGive
@@ -382,6 +391,7 @@ namespace LocustHives.Game.Logistics.Locust
                             LogisticsOperation.Take,
                             [
                                 (
+                                    target,
                                     method,
                                     LogisticsOperation.Give,
                                     toGive

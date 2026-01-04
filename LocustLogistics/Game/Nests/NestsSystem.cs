@@ -34,14 +34,14 @@ namespace LocustHives.Game.Nests
         {
             api.RegisterBlockEntityBehaviorClass("HiveLocustNest", typeof(BEBehaviorHiveLocustNest));
             api.RegisterBlockClass("BlockTamedLocustNest", typeof(BlockTamedLocustNest));
-
-            nestRegistry = new MembershipRegistry<ILocustNest>();
         }
 
         public override void StartServerSide(ICoreServerAPI api)
         {
             base.StartServerSide(api);
             AiTaskRegistry.Register<AiTaskReturnToNest>("returnToNest");
+
+            nestRegistry = new MembershipRegistry<ILocustNest>();
         }
 
         public void UpdateNestMembership(ILocustNest nest, int? hiveId)

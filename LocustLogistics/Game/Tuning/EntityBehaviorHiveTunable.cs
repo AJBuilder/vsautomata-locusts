@@ -1,6 +1,7 @@
 ﻿using LocustHives.Systems.Membership;
 using System;
 using System.Text;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -12,55 +13,60 @@ namespace LocustHives.Game.Core
     public class EntityBehaviorHiveTunable : EntityBehavior, IHiveMember
     {
 
-        public int? hiveId;
         public TuningSystem modSystem;
         public Action<int?, int?> OnTuned { get; set; }
 
+        public int? LocalHiveId
+        {
+            get => entity.WatchedAttributes.TryGetInt("hiveId");
+            set
+            {
+                if (value.HasValue)
+                {
+                    entity.WatchedAttributes.SetInt("hiveId", value.Value);
+                }
+                else
+                {
+                    entity.WatchedAttributes.RemoveAttribute("hiveId");
+                }
+
+            }
+        }
+
+
         public EntityBehaviorHiveTunable(Entity entity) : base(entity)
         {
+            OnTuned += (_, newId) => LocalHiveId = newId;
+        }
 
-            OnTuned += (_, newId) =>
+        public override void Initialize(EntityProperties properties, JsonObject attributes)
+        {
+            base.Initialize(properties, attributes);
+
+            // We set the modsystem in initialize so that we don't call Tune in FromBytes.
+            if (entity.Api is ICoreServerAPI)
             {
-                hiveId = newId;
-            };
-
-            modSystem = entity.Api.ModLoader.GetModSystem<TuningSystem>();
+                modSystem = entity.Api.ModLoader.GetModSystem<TuningSystem>();
+                if (!LocalHiveId.HasValue && attributes["createsHive"].AsBool()) LocalHiveId = modSystem.CreateHive();
+            }
         }
 
         public override void AfterInitialized(bool onFirstSpawn)
         {
             base.AfterInitialized(onFirstSpawn);
-            if (!hiveId.HasValue && entity.SidedProperties.Attributes.GetAsBool("createsHive")) hiveId = modSystem.CreateHive();
-            modSystem?.Tune(this, hiveId);
+            modSystem?.Tune(this, LocalHiveId);
         }
 
         public override void OnEntityDespawn(EntityDespawnData despawn)
         {
             base.OnEntityDespawn(despawn);
             modSystem?.Tune(this, null);
-
-        }
-
-        public override void ToBytes(bool forClient)
-        {
-            if(hiveId.HasValue)
-            {
-                entity.WatchedAttributes.SetInt("hiveId", hiveId.Value);
-            }
-        }
-
-        public override void FromBytes(bool isSync)
-        {
-            var id = entity.WatchedAttributes.TryGetInt("hiveId");
-            // If modSystem not set yet, then this is on-load or the client. If on-load we'll do it later in Initialize.
-            if(modSystem == null) hiveId = id;
-            else if (id.HasValue != hiveId.HasValue ||
-                id.HasValue && hiveId.HasValue && id != hiveId) modSystem?.Tune(this, id);
         }
 
         public override void GetInfoText(StringBuilder infotext)
         {
-            infotext.AppendLine($"Hive: {(hiveId == null ? "None" : hiveId)}");
+            var local = LocalHiveId;
+            infotext.AppendLine($"Hive: {(!local.HasValue ? "None" : local.Value)}");
         }
         public override string PropertyName()
         {
