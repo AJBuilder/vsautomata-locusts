@@ -1,0 +1,36 @@
+{
+  "ingredientPattern": "HPS,LOL,_P_",
+  "ingredients": {
+    "L": {
+      "type": "block",
+      "code": "game:linen-*"
+    },
+    "O": {
+      "type": "item",
+      "code": "game:hoop-*",
+      "quantity": 2
+    },
+    "P": {
+      "type": "item",
+      "code": "game:plank-*",
+      "quantity": 4
+    },
+    "H": {
+      "type": "item",
+      "code": "game:hammer-*",
+      "isTool": true
+    },
+    "S": {
+      "type": "item",
+      "code": "game:saw-*",
+      "isTool": true
+    }
+  },
+  "width": 3,
+  "height": 3,
+  "output": {
+    "type": "block",
+    "code": "hiveaccessdock-north",
+    "quantity": 1
+  }
+}

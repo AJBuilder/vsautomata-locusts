@@ -11,6 +11,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace LocustHives.Game.Logistics
 {
@@ -95,6 +96,23 @@ namespace LocustHives.Game.Logistics
                 LogisticsOperation.Give => inventory.CanAccept(stack),
             };
             return Math.Max(0, able - reserved);
+        }
+
+        public override void OnBlockRemoved()
+        {
+            base.OnBlockRemoved();
+            DisconnectFromLogistics();
+        }
+
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
+            DisconnectFromLogistics();
+        }
+
+        public void DisconnectFromLogistics()
+        {
+            reservations?.Foreach(r => r.Release());
         }
     }
 }

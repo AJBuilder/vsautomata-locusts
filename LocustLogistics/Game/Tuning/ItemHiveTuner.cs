@@ -34,25 +34,25 @@ namespace LocustHives.Game.Core
                 SkillItem[] modes;
 
                 // Modes
-                // 1. Tune to nest
-                // 2. Detune
+                // 1. Calibrate
+                // 2. Tune
+                // 3. Zero
                 modes = new SkillItem[3];
                 modes[(int)HiveTunerMode.Calibrate] = new SkillItem() { Code = new AssetLocation("calibrate"), Name = "Calibrate" };
                 modes[(int)HiveTunerMode.Tune] = new SkillItem() { Code = new AssetLocation("tune"), Name = "Tune" };
                 modes[(int)HiveTunerMode.Zero] = new SkillItem() { Code = new AssetLocation("zero"), Name = "Zero" };
 
+                if (capi != null)
+                {
+                    modes[0].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("locusthives:textures/icons/zero.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                    modes[0].TexturePremultipliedAlpha = false;
 
+                    modes[1].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("locusthives:textures/icons/zero.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                    modes[1].TexturePremultipliedAlpha = false;
 
-                //if (capi != null)
-                //{
-                //    modes[0].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/heatmap.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
-                //    modes[0].TexturePremultipliedAlpha = false;
-                //    if (modes.Length > 1)
-                //    {
-                //        modes[1].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/rocks.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
-                //        modes[1].TexturePremultipliedAlpha = false;
-                //    }
-                //}
+                    modes[2].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("locusthives:textures/icons/zero.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                    modes[2].TexturePremultipliedAlpha = false;
+                }
 
                 return modes;
             });

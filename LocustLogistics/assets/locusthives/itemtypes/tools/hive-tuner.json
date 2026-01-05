@@ -27,15 +27,72 @@
       }
     }
   ],
-  "shape": { "base": "game:item/tool/wrench/iron1" },
+  "shape": { "base": "item/hive-tuner" },
   "textures": {
-    "metal": { "base": "game:block/metal/ingot/bronze" },
-    "wood": { "base": "game:item/tool/material/ebony" }
+    "device-plate": { "base": "game:block/machine/device-plate" },
+    "glow": { "base": "game:block/machine/statictranslocator/rustyglow" },
+    "prongs": { "base": "game:block/metal/plate/tinbronze" },
+    "cable": { "base": "game:block/nailtexture" },
+    "body": { "base": "game:block/wood-generic" }
   },
   "attributes": {},
   "creativeinventory": {
     "general": [ "*" ],
     "items": [ "*" ],
     "tools": [ "*" ]
+  },
+  "guiTransform": {
+    "translation": {
+      "x": 49,
+      "y": 86,
+      "z": 0
+    },
+    "rotation": {
+      "x": -17,
+      "y": -113,
+      "z": -112
+    },
+    "origin": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "scale": 4.78
+  },
+  "tpHandTransform": {
+    "translation": {
+      "x": 0.4,
+      "y": 0.2,
+      "z": 0.5
+    },
+    "rotation": {
+      "x": -2,
+      "y": 0,
+      "z": -32
+    },
+    "origin": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "scale": 1.03
+  },
+  "groundTransform": {
+    "translation": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rotation": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "origin": {
+      "x": 0.5,
+      "y": 0,
+      "z": 0.3
+    },
+    "scale": 6
   }
 }

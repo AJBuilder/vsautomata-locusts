@@ -1,13 +1,22 @@
 {
-    "hello": "hello world!",
+  "block-hiveaccessdock*": "Hive Access Dock",
+  "blockdesc-hiveaccessdock*": "Provides a hive access to a container.",
+  "locusthives:block-handbooktext-locusthives:hiveaccessdock": "When placed facing a container and tuned to a hive, workers of the tuned hive can use the container as storage.",
 
-    "locusthives:hive-storage-settings": "Hive Storage Settings",
-    "locusthives:tab-storage": "Storage",
-    "locusthives:tab-request": "Request",
-    "locusthives:tab-push": "Push",
-    "locusthives:request-mode-quota": "Quota Mode",
-    "locusthives:add-request": "Add Request",
-    "locusthives:request-list-placeholder": "Request list (to be implemented)",
-    "locusthives:enable-push-mode": "Enable Push Mode",
-    "locusthives:select-item": "Select Item"
+  "item-hivetuner": "Hive Tuner",
+  "itemdesc-hivetuner": "Can zero or tune a target to a hive.",
+  "locusthives:block-handbooktext-locusthives:hivetuner": "Has three modes:",
+
+  "block-hivepushbeacon*": "Hive Push Beacon",
+  "blockdesc-hivepushbeacon*": "Broadcasts to take all items.",
+
+  "hive-storage-settings": "Hive Storage Settings",
+  "tab-storage": "Storage",
+  "tab-request": "Request",
+  "tab-push": "Push",
+  "request-mode-quota": "Quota Mode",
+  "add-request": "Add Request",
+  "request-list-placeholder": "Request list (to be implemented)",
+  "enable-push-mode": "Enable Push Mode",
+  "select-item": "Select Item"
 }

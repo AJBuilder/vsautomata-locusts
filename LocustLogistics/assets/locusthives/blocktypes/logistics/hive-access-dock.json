@@ -1,5 +1,5 @@
 {
-  "code": "hiveaccessport",
+  "code": "hiveaccessdock",
   "behaviors": [
     {
       "name": "OmniRotatable",
@@ -29,33 +29,34 @@
   "drawtype": "json",
   "shapebytype": {
     "*-up": {
-      "base": "block/hive-access-port",
+      "base": "block/hive-access-dock",
       "rotateX": -90
     },
     "*-down": {
-      "base": "block/hive-access-port",
+      "base": "block/hive-access-dock",
       "rotateX": 90
     },
     "*-north": {
-      "base": "block/hive-access-port"
+      "base": "block/hive-access-dock"
     },
     "*-east": {
-      "base": "block/hive-access-port",
+      "base": "block/hive-access-dock",
       "rotateY": -90
     },
     "*-south": {
-      "base": "block/hive-access-port",
+      "base": "block/hive-access-dock",
       "rotateY": 180
     },
     "*-west": {
-      "base": "block/hive-access-port",
+      "base": "block/hive-access-dock",
       "rotateY": 90
     }
   },
   "textures": {
     "cloth": { "base": "game:block/locustnest/stalagmite/fabric-small" },
     "frame": { "base": "game:block/metal/plate/iron" },
-    "frameinner": { "base": "game:block/wood-generic" }
+    "frameinner": { "base": "game:block/wood-generic" },
+    "black": { "base": "game:item/armor/cloth/black" }
   },
   "lightAbsorption": 0,
   "sidesolidbytype": {
@@ -115,7 +116,7 @@
   "drops": [
     {
       "type": "block",
-      "code": "hiveaccessport-north",
+      "code": "hiveaccessdock-north",
       "quantity": {
         "avg": 1,
         "var": 0

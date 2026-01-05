@@ -1,6 +1,6 @@
 {
 	"editor": {
-		"collapsedPaths": "Root/BaseFrameBottom/Cube17/Cube2,Root/BaseFrameBottom/Cube9/Cube2/Cube3/Cube4,Root/BaseFrameBottom/Cube6/Cube2,Root/BaseFrameWest,Root/BaseFrameBottom/Cube9/Cube2,Root/BaseFrameBottom/Cube6/Cube21",
+		"collapsedPaths": "Root/BaseFrameBottom/Cube17/Cube2,Root/BaseFrameBottom/Cube2,Root/BaseFrameBottom/Cube9/Cube2/Cube3/Cube4,Root/BaseFrameBottom/Cube6/Cube2,Root/BaseFrameWest,Root/BaseFrameBottom/Cube9/Cube2,Root/BaseFrameBottom/Cube6/Cube21",
 		"allAngles": false,
 		"entityTextureMode": false
 	},
@@ -540,7 +540,6 @@
 					"to": [ 16.0, 16.0, 0.3 ],
 					"rotationOrigin": [ 0.0, 0.0, 0.3 ],
 					"faces": {
-						"south": { "texture": "#black", "uv": [ 7.0, 6.0, 7.5, 6.5 ], "autoUv": false, "windMode": [-1,-1,-1,-1], "windData": [0,0,1,1] }
 					}
 				}
 			]

@@ -1,0 +1,33 @@
+{
+  "ingredientPattern": "PKP,MGM,_W_",
+  "ingredients": {
+    "P": {
+      "type": "item",
+      "code": "game:chisel-tinbronze"
+    },
+    "M": {
+      "type": "block",
+      "code": "game:metal-parts"
+    },
+    "G": {
+      "type": "item",
+      "code": "game:gear-temporal"
+    },
+    "W": {
+      "type": "item",
+      "code": "game:plank-*"
+    },
+    "K": {
+      "type": "item",
+      "code": "game:knife-*",
+      "isTool": true
+    }
+  },
+  "width": 3,
+  "height": 3,
+  "output": {
+    "type": "item",
+    "code": "hivetuner",
+    "quantity": 1
+  }
+}

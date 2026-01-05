@@ -193,9 +193,9 @@
     "scale": 2.02
   },
   "sounds": {
-    "place": "block/planks",
-    "break": "block/planks",
-    "hit": "block/planks"
+    "place": "game:block/planks",
+    "break": "game:block/planks",
+    "hit": "game:block/planks"
   },
   "rainPermeable": true,
   "materialDensity": 600,
