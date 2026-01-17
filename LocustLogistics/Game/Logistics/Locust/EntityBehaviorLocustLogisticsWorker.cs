@@ -324,7 +324,7 @@ namespace LocustHives.Game.Logistics.Locust
                 for (int i = 0; i < accessTasks.Length; i++)
                 {
                     var at = accessTasks[i];
-                    var reservation = promiseTarget.TryReserve(stackForPromise.CloneWithSize((int)at.count), at.operation);
+                    var reservation = at.storage.TryReserve(stackForPromise.CloneWithSize((int)at.count), at.operation);
 
                     // If we fail to get one
                     if (reservation == null)
@@ -371,7 +371,7 @@ namespace LocustHives.Game.Logistics.Locust
                         stack = reservations[i].Stack,
                         operation = at.operation,
                         // If this task operates on the target with the correct operation, it should fulfill the promise.
-                        promise = promiseTarget == at.storage && promiseOperation == at.operation ? promise : null,
+                        promise = (promiseTarget == at.storage && promiseOperation == at.operation) ? promise : null,
                     });
                 }
 
@@ -425,8 +425,8 @@ namespace LocustHives.Game.Logistics.Locust
             }
             else if(operation == LogisticsOperation.Give)
             {
-                uint workerCanProvide = inventory.CanProvide(stack);
-                uint missingCount = Math.Min((uint)stack.StackSize - workerCanProvide, 0);
+                uint workerAlreadyHas = inventory.CanProvide(stack);
+                uint missingCount = (uint)Math.Max(stack.StackSize - workerAlreadyHas, 0);
 
 
                 // If we still need more items, we have one strategy for now: search storages of the hive this worker is in for stuff to take first.
@@ -442,14 +442,14 @@ namespace LocustHives.Game.Logistics.Locust
                     if(canAccept != 0)
                     {
                         var takeStack = stack.CloneWithSize((int)Math.Min(missingCount, canAccept));
-                        uint potentialTakeCount;
+                        uint availableToTake;
                         foreach (var storage in logisticsSystem.StorageMembership.GetMembersOf(hiveId))
                         {
                             if (storage == target) continue;
                             foreach (var method in storage.AccessMethods)
                             {
-                                potentialTakeCount = method.CanDo(takeStack, LogisticsOperation.Take);
-                                if (potentialTakeCount != 0) potentialTakeOps.Append((storage, method, potentialTakeCount));
+                                availableToTake = method.CanDo(takeStack, LogisticsOperation.Take);
+                                if (availableToTake != 0) potentialTakeOps.Add((storage, method, availableToTake));
                             }
                         }
                     }
@@ -465,7 +465,7 @@ namespace LocustHives.Game.Logistics.Locust
                     // b. there may no longer be room since the promise/request was made.
                     uint canAccept = method.CanDo(stack, LogisticsOperation.Give);
 
-                    // Skip methods that don't have roome
+                    // Skip methods that don't have room
                     if (canAccept == 0) continue;
 
                     var givePos = iwmethod.Position.AsBlockPos;
@@ -474,7 +474,7 @@ namespace LocustHives.Game.Logistics.Locust
                     if (potentialTakeOps != null)
                     {
                         // yield efforts that have a task to take first from another storage
-                        foreach (var (takeStorage, takeMethod, toTake) in potentialTakeOps)
+                        foreach (var (takeStorage, takeMethod, availableToTake) in potentialTakeOps)
                         {
                             if (!(takeMethod is IInWorldStorageAccessMethod iwTakeMethod)) continue;
                             var takePos = iwTakeMethod.Position.AsBlockPos;
@@ -485,13 +485,14 @@ namespace LocustHives.Game.Logistics.Locust
                             var transferPath = ComputePath(takePos, givePos);
                             if (transferPath == null) continue;
 
-                            var toGive = Math.Min(canAccept, workerCanProvide + toTake);
+                            var toTake = Math.Min(missingCount, availableToTake);
+                            var toGive = Math.Min(canAccept, workerAlreadyHas + toTake);
                             yield return CreateEffort(
                                 toGive,
                                 ComputeTravelTime(takePath) + ComputeTravelTime(transferPath),
                                 stack,
                                 target,
-                                LogisticsOperation.Take,
+                                LogisticsOperation.Give,
                                 [
                                     (
                                         takeStorage,
@@ -510,7 +511,7 @@ namespace LocustHives.Game.Logistics.Locust
                     } else
                     {
                         // otherwise just give what this worker currently has
-                        var toGive = Math.Min(canAccept, workerCanProvide);
+                        var toGive = Math.Min(canAccept, workerAlreadyHas);
 
                         var givePath = ComputePath(entity.Pos.AsBlockPos, givePos);
                         if (givePath == null) continue;
@@ -520,7 +521,7 @@ namespace LocustHives.Game.Logistics.Locust
                             ComputeTravelTime(givePath),
                             stack,
                             target,
-                            LogisticsOperation.Take,
+                            LogisticsOperation.Give,
                             [
                                 (
                                     target,
@@ -563,8 +564,11 @@ namespace LocustHives.Game.Logistics.Locust
 
         public void Cleanup()
         {
-            entity.Api.Event.UnregisterGameTickListener(putAwayListenerId);
-            entity.Api.Event.UnregisterCallback(forgetLastTaskListenerId);
+            if (entity.Api is ICoreServerAPI)
+            {
+                entity.Api.Event.UnregisterGameTickListener(putAwayListenerId);
+                entity.Api.Event.UnregisterCallback(forgetLastTaskListenerId);
+            }
         }
     }
 }

@@ -35,7 +35,9 @@ namespace LocustHives.Game.Logistics
 
             api.RegisterBlockEntityBehaviorClass("HiveAccessPort", typeof(BEBehaviorHiveAccessPort));
             api.RegisterBlockEntityBehaviorClass("HivePushBeacon", typeof(BEBehaviorHivePushBeacon));
+            api.RegisterBlockEntityBehaviorClass("HiveStorageRegulator", typeof(BEBehaviorHiveStorageRegulator));
             api.RegisterBlockClass("BlockHivePushBeacon", typeof(BlockHivePushBeacon));
+            api.RegisterBlockClass("BlockHiveStorageRegulator", typeof(BlockHiveStorageRegulator));
         }
 
         public override void StartServerSide(ICoreServerAPI sapi)

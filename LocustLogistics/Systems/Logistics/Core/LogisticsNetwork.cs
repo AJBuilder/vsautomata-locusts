@@ -67,8 +67,8 @@ namespace LocustHives.Systems.Logistics.Core
                 return;
             }
 
-            var countLeft = (uint)promise.Stack.StackSize - countCommissioned.GetValueOrDefault(promise);
-            while (countLeft >= 0)
+            var countLeft = (uint)Math.Min(0, promise.Stack.StackSize - countCommissioned.GetValueOrDefault(promise));
+            while (countLeft > 0)
             {
                 var stack = promise.Stack.GetEmptyClone();
                 stack.StackSize = (int)countLeft;

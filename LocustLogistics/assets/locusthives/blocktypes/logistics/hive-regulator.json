@@ -1,0 +1,285 @@
+{
+  "code": "hivestorageregulator",
+  "class": "BlockHiveStorageRegulator",
+  "behaviors": [
+    {
+      "name": "OmniAttachable",
+      "properties": { "facingCode": "facing" }
+    }
+  ],
+  "entityBehaviors": [
+    {
+      "name": "HiveStorageRegulator",
+      "properties": { "facingCode": "facing" }
+    }
+  ],
+  "variantgroups": [
+    {
+      "code": "facing",
+      "loadFromPropertiesCombine": [ "abstract/horizontalorientation", "abstract/verticalorientation" ]
+    }
+  ],
+  "attributes": {
+    "handbook": {
+      "groupBy": [ "hivestorageregulator-*" ]
+    }
+  },
+  "creativeinventory": {
+    "general": [ "*-up" ]
+  },
+  "textures": {
+    "green": { "base": "game:block/liquid/dye/green" },
+    "red": { "base": "game:block/liquid/dye/red" },
+    "iron1": { "base": "game:block/metal/sheet/iron1" },
+    "clear": { "base": "game:block/wood/displaycase/clear" },
+    "wood": { "base": "game:block/wood/displaycase/wood" },
+    "bronze-hacked": { "base": "game:entity/lore/locust/bronze-hacked" },
+    "copper": { "base": "game:item/resource/plate/copper}" }
+  },
+  "shapeByType": {
+    "*-up": {
+      "base": "block/hive-storage-regulator"
+    },
+    "*-down": {
+      "base": "block/hive-storage-regulator",
+      "rotateX": 180
+    },
+    "*-north": {
+      "base": "block/hive-storage-regulator",
+      "rotateX": 90,
+      "rotateZ": 180
+    },
+    "*-east": {
+      "base": "block/hive-storage-regulator",
+      "rotateX": 90,
+      "rotateZ": 270
+    },
+    "*-south": {
+      "base": "block/hive-storage-regulator",
+      "rotateX": 90
+    },
+    "*-west": {
+      "base": "block/hive-storage-regulator",
+      "rotateX": 90,
+      "rotateZ": 90
+    }
+  },
+  "doNotRenderAtLod2": true,
+  "sidesolid": { "all": false },
+  "sideopaque": { "all": false },
+  "replaceable": 5001,
+  "resistance": 0,
+  "collisionBoxes": [
+    {
+      "x1": 0.275,
+      "y1": 0,
+      "z1": 0.275,
+      "x2": 0.725,
+      "y2": 0.06,
+      "z2": 0.725,
+      "rotateXByType": {
+        "*-up": 0,
+        "*-down": 180,
+        "*": 90
+      },
+      "rotateZByType": {
+        "*-north": 180,
+        "*-east": 270,
+        "*-west": 90,
+        "*": 0
+      }
+    },
+    {
+      "x1": 0.27,
+      "y1": 0,
+      "z1": 0.2689,
+      "x2": 0.5963,
+      "y2": 0.3315,
+      "z2": 0.375,
+      "rotateXByType": {
+        "*-up": 0,
+        "*-down": 180,
+        "*": 90
+      },
+      "rotateZByType": {
+        "*-north": 180,
+        "*-east": 270,
+        "*-west": 90,
+        "*": 0
+      }
+    }
+  ],
+  "selectionBoxes": [
+    {
+      "x1": 0.275,
+      "y1": 0,
+      "z1": 0.275,
+      "x2": 0.725,
+      "y2": 0.06,
+      "z2": 0.725,
+      "rotateXByType": {
+        "*-up": 0,
+        "*-down": 180,
+        "*": 90
+      },
+      "rotateZByType": {
+        "*-north": 180,
+        "*-east": 270,
+        "*-west": 90,
+        "*": 0
+      }
+    },
+    {
+      "x1": 0.27,
+      "y1": 0,
+      "z1": 0.2689,
+      "x2": 0.5963,
+      "y2": 0.3315,
+      "z2": 0.375,
+      "rotateXByType": {
+        "*-up": 0,
+        "*-down": 180,
+        "*": 90
+      },
+      "rotateZByType": {
+        "*-north": 180,
+        "*-east": 270,
+        "*-west": 90,
+        "*": 0
+      }
+    },
+    {
+      "x1": 0.4123,
+      "y1": 0.0625,
+      "z1": 0.4695,
+      "x2": 0.5131,
+      "y2": 0.1313,
+      "z2": 0.5688,
+      "rotateXByType": {
+        "*-up": 0,
+        "*-down": 180,
+        "*": 90
+      },
+      "rotateZByType": {
+        "*-north": 180,
+        "*-east": 270,
+        "*-west": 90,
+        "*": 0
+      }
+    },
+    {
+      "x1": 0.6376,
+      "y1": 0.0809,
+      "z1": 0.313,
+      "x2": 0.7064,
+      "y2": 0.125,
+      "z2": 0.469,
+      "rotateXByType": {
+        "*-up": 0,
+        "*-down": 180,
+        "*": 90
+      },
+      "rotateZByType": {
+        "*-north": 180,
+        "*-east": 270,
+        "*-west": 90,
+        "*": 0
+      }
+    },
+    {
+      "x1": 0.6376,
+      "y1": 0.0809,
+      "z1": 0.5378,
+      "x2": 0.7064,
+      "y2": 0.125,
+      "z2": 0.6938,
+      "rotateXByType": {
+        "*-up": 0,
+        "*-down": 180,
+        "*": 90
+      },
+      "rotateZByType": {
+        "*-north": 180,
+        "*-east": 270,
+        "*-west": 90,
+        "*": 0
+      }
+    }
+  ],
+  "blockmaterial": "Wood",
+  "tpHandTransform": {
+    "translation": {
+      "x": 0.4,
+      "y": -0.8,
+      "z": 0.8
+    },
+    "rotation": {
+      "x": -87,
+      "y": -146,
+      "z": 90
+    },
+    "origin": {
+      "x": -0.7,
+      "y": 0.5,
+      "z": 0.1
+    },
+    "scale": 0.66
+  },
+  "guiTransform": {
+    "translation": {
+      "x": 17.7,
+      "y": -6.4,
+      "z": 0
+    },
+    "rotation": {
+      "x": -29,
+      "y": -164,
+      "z": 2
+    },
+    "origin": {
+      "x": 0.5,
+      "y": 0.3,
+      "z": 0.4
+    },
+    "scaleXyz": {
+      "x": -2.48,
+      "y": 2.48,
+      "z": 2.48
+    }
+  },
+  "groundTransform": {
+    "translation": {
+      "x": -0.4,
+      "y": 0,
+      "z": 0
+    },
+    "rotation": {
+      "x": 0,
+      "y": -45,
+      "z": 0
+    },
+    "origin": {
+      "x": 0.5,
+      "y": 0,
+      "z": 0.5
+    },
+    "scale": 4.61
+  },
+  "sounds": {
+    "place": "game:block/planks",
+    "break": "game:block/planks",
+    "hit": "game:block/planks"
+  },
+  "rainPermeable": true,
+  "materialDensity": 600,
+  "drops": [
+    {
+      "type": "block",
+      "code": "hivestorageregulator-up",
+      "quantity": {
+        "avg": 1,
+        "var": 0
+      }
+    }
+  ]
+}
