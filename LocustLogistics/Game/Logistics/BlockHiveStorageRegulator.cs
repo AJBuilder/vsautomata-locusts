@@ -19,14 +19,14 @@ namespace LocustHives.Game.Logistics
         {
             if (world.Side != EnumAppSide.Server) return true;
 
-            var gauge = world.BlockAccessor.GetBlockEntity(blockSel.Position)?.GetBehavior<BEBehaviorHiveStorageRegulator>();
+            var be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
+            var gauge = be?.GetBehavior<BEBehaviorHiveStorageRegulator>();
             if (gauge == null) return base.OnBlockInteractStart(world, byPlayer, blockSel);
-
-            var heldStack = byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack;
 
             switch (blockSel.SelectionBoxIndex)
             {
                 case ITEM_BOX:
+                    var heldStack = byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack;
                     if (heldStack != null)
                     {
                         gauge.TrackedItem = heldStack;
@@ -38,13 +38,15 @@ namespace LocustHives.Game.Logistics
                     return true;
 
                 case INCREMENT_BOX:
-                    gauge.TargetCount++;
+                    gauge.TrackedItem.StackSize++;
+                    be.MarkDirty();
                     return true;
 
                 case DECREMENT_BOX:
-                    if (gauge.TargetCount > 1)
+                    if (gauge.TrackedItem.StackSize > 0)
                     {
-                        gauge.TargetCount--;
+                        gauge.TrackedItem.StackSize--;
+                        be.MarkDirty();
                     }
                     return true;
 

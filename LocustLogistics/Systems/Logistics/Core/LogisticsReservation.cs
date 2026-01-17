@@ -28,19 +28,19 @@ namespace LocustHives.Systems.Logistics.Core
 
         /// <summary>
         /// The stack and stack size being reserved.
+        ///
+        /// Positive stack size = Give reservation (room is reserved)
+        /// Negative stack size = Take reservation (items are reserved)
         /// </summary>
         public ItemStack Stack { get; }
         public ILogisticsStorage TargetStorage { get; }
         public LogisticsReservationState State => state;
 
-        public LogisticsOperation Operation { get; }
 
-
-        public LogisticsReservation(ItemStack stack, ILogisticsStorage targetStorage, LogisticsOperation operation  )
+        public LogisticsReservation(ItemStack stack, ILogisticsStorage targetStorage)
         {
             Stack = stack;
             TargetStorage = targetStorage;
-            Operation = operation;
         }
 
         /// <summary>

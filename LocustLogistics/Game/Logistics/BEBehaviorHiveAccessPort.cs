@@ -43,6 +43,8 @@ namespace LocustHives.Game.Logistics
             }
         }
 
+        public IEnumerable<LogisticsReservation> Reservations => reservations;
+
         public BEBehaviorHiveAccessPort(BlockEntity blockentity) : base(blockentity)
         {
         }
@@ -69,12 +71,12 @@ namespace LocustHives.Game.Logistics
             }
         }
 
-        public LogisticsReservation TryReserve(ItemStack stack, LogisticsOperation operation)
+        public LogisticsReservation TryReserve(ItemStack stack)
         {
-            var available = CanDo(stack, operation);
-            if (available >= stack.StackSize)
+            var available = CanDo(stack);
+            if (available >= (uint)Math.Abs(stack.StackSize))
             {
-                var reservation = new LogisticsReservation(stack, this, operation);
+                var reservation = new LogisticsReservation(stack, this);
                 reservations.Add(reservation);
                 reservation.ReleasedEvent += () =>
                 {
@@ -85,17 +87,16 @@ namespace LocustHives.Game.Logistics
             return null;
         }
 
-        private uint CanDo(ItemStack stack, LogisticsOperation op)
+        private uint CanDo(ItemStack stack)
         {
             var inventory = Inventory;
             if (inventory == null) return 0;
-            var reserved = (uint)reservations.Where(r => r.Stack.Satisfies(stack) && r.Operation == op).Sum(r => r.Stack.StackSize);
-            var able = op switch
-            {
-                LogisticsOperation.Take => inventory.CanProvide(stack),
-                LogisticsOperation.Give => inventory.CanAccept(stack),
-            };
-            return Math.Max(0, able - reserved);
+            bool isTake = stack.StackSize < 0;
+            var reserved = (uint)reservations
+                .Where(r => r.Stack.Satisfies(stack) && (r.Stack.StackSize < 0) == isTake)
+                .Sum(r => Math.Abs(r.Stack.StackSize));
+            var able = inventory.CanDo(stack);
+            return (uint)Math.Max(0, (int)able - (int)reserved);
         }
 
         public override void OnBlockRemoved()

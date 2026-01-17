@@ -29,8 +29,12 @@ namespace LocustHives.Game.Logistics.Locust
     {
         public ILogisticsStorage storage;
         public IStorageAccessMethod method;
+        /// <summary>
+        /// The stack to transfer.
+        /// Positive = Give (worker inventory -> storage inventory)
+        /// Negative = Take (storage inventory -> worker inventory)
+        /// </summary>
         public ItemStack stack;
-        public LogisticsOperation operation;
 
         /// <summary>
         /// The promise that the completion of this task will completely fulfill.
@@ -40,10 +44,10 @@ namespace LocustHives.Game.Logistics.Locust
 
         public uint TryDo(ILogisticsWorker worker, IWorldAccessor accessorForResolve)
         {
-            var (to, from) = operation switch {
-                LogisticsOperation.Take => (worker.Inventory, storage.Inventory),
-                LogisticsOperation.Give => (storage.Inventory, worker.Inventory)
-            };
+            bool isTake = stack.StackSize < 0;
+            var (to, from) = isTake
+                ? (worker.Inventory, storage.Inventory)
+                : (storage.Inventory, worker.Inventory);
 
             // Transfer stack targeting this storage using the given other inventory as source/sink
             // depending on the operation.
@@ -51,7 +55,7 @@ namespace LocustHives.Game.Logistics.Locust
             // 1. The requested amount has been transferred
             // 2. Sink has no more room.
             // 3. Source has no more to transfer
-            uint toTransfer = (uint)stack.StackSize;
+            uint toTransfer = (uint)Math.Abs(stack.StackSize);
             
             // For each source slot
             foreach(var fromSlot in from)
@@ -69,7 +73,7 @@ namespace LocustHives.Game.Logistics.Locust
                         var toSlot = to.GetBestSuitedSlot(fromSlot).slot;
                         if (toSlot == null) break; // No more room
 
-                        var transfered = fromSlot.TryPutInto(accessorForResolve, toSlot, stack.StackSize);
+                        var transfered = fromSlot.TryPutInto(accessorForResolve, toSlot, (int)toTransfer);
                         if (transfered == 0) break; // No more room. (Should have been caught above though...)
                         toTransfer -= (uint)transfered;
 
@@ -203,9 +207,9 @@ namespace LocustHives.Game.Logistics.Locust
                 var giveStack = inventory.Where(slot => !slot.Empty).Select(slot => slot.Itemstack).First();
 
                 // Find where to put it
-                // but skip the last remembered task's storage if it was a take.
+                // but skip the last remembered task's storage if it was a take (negative stack size).
                 // We don't want to give the item right back if we just took it.
-                var skipStorage = lastRememberedTask.HasValue && lastRememberedTask.Value.operation == LogisticsOperation.Take ? lastRememberedTask.Value.storage : null;
+                var skipStorage = lastRememberedTask.HasValue && lastRememberedTask.Value.stack.StackSize < 0 ? lastRememberedTask.Value.storage : null;
 
                 // The give strategy in this instance is to give as soon as possible, event if there isn't enough room.
                 // This may not be best? But this behavior isn't exactly time critical, so no need to do exhaustive computations. (unlike computing efforts)
@@ -221,8 +225,8 @@ namespace LocustHives.Game.Logistics.Locust
                     {
                         if (!(method is IInWorldStorageAccessMethod iwmethod)) continue;
 
-                        // Make sure we can give with this method.
-                        uint canAccept = method.CanDo(giveStack, LogisticsOperation.Give);
+                        // Make sure we can give with this method (positive stack = Give).
+                        uint canAccept = method.CanDo(giveStack);
 
                         // Skip methods that don't have room
                         if (canAccept == 0) continue;
@@ -242,13 +246,13 @@ namespace LocustHives.Game.Logistics.Locust
                 }
                 if (bestStorage != null)
                 {
+                    giveStack = giveStack.Clone();
                     giveStack.StackSize = Math.Min((int)bestCount, giveStack.StackSize); // Don't give more than we have.
                     queuedStorageAccess.Enqueue(new AccessTask
                     {
                         storage = bestStorage,
                         method = bestMethod,
-                        operation = LogisticsOperation.Give,
-                        stack = giveStack,
+                        stack = giveStack, // Positive = Give
                         promise = null
                     });
                 }
@@ -302,18 +306,16 @@ namespace LocustHives.Game.Logistics.Locust
         /// </summary>
         /// <param name="bestCount"></param>
         /// <param name="time"></param>
-        /// <param name="stackForPromise"></param>
+        /// <param name="promiseStack">Stack with sign indicating promise direction (+ = Give, - = Take)</param>
         /// <param name="promiseTarget"></param>
-        /// <param name="promiseOperation"></param>
-        /// <param name="accessTasks"></param>
+        /// <param name="accessTasks">Tuples with signedCount (+ = Give, - = Take)</param>
         /// <returns></returns>
         private WorkerEffort CreateEffort(
             uint bestCount,
             float time,
-            ItemStack stackForPromise,
+            ItemStack promiseStack,
             ILogisticsStorage promiseTarget,
-            LogisticsOperation promiseOperation,
-            (ILogisticsStorage storage, IStorageAccessMethod method, LogisticsOperation operation, uint count)[] accessTasks)
+            (ILogisticsStorage storage, IStorageAccessMethod method, int signedCount)[] accessTasks)
         {
             return new WorkerEffort(bestCount, time, (requestedCount) =>
             {
@@ -324,7 +326,7 @@ namespace LocustHives.Game.Logistics.Locust
                 for (int i = 0; i < accessTasks.Length; i++)
                 {
                     var at = accessTasks[i];
-                    var reservation = at.storage.TryReserve(stackForPromise.CloneWithSize((int)at.count), at.operation);
+                    var reservation = at.storage.TryReserve(promiseStack.CloneWithSize(at.signedCount));
 
                     // If we fail to get one
                     if (reservation == null)
@@ -342,7 +344,9 @@ namespace LocustHives.Game.Logistics.Locust
                 }
 
                 // With everything reserved, we can create and setup a promise to return.
-                var promise = new LogisticsPromise(stackForPromise.CloneWithSize((int)Math.Min(requestedCount, bestCount)), promiseTarget, promiseOperation);
+                // Preserve the sign but update the magnitude to requested amount
+                int promiseSign = promiseStack.StackSize >= 0 ? 1 : -1;
+                var promise = new LogisticsPromise(promiseStack.CloneWithSize(promiseSign * (int)Math.Min(requestedCount, bestCount)), promiseTarget);
                 promise.CompletedEvent += (state) =>
                 {
                     // Release all the reservations
@@ -362,16 +366,17 @@ namespace LocustHives.Game.Logistics.Locust
                 }
 
                 // Now queue up the tasks
+                bool promiseIsTake = promiseStack.StackSize < 0;
                 for (int i = 0; i < accessTasks.Length; i++)
                 {
                     var at = accessTasks[i];
+                    bool taskIsTake = at.signedCount < 0;
                     queuedStorageAccess.Enqueue(new AccessTask {
                         storage = at.storage,
                         method = at.method,
                         stack = reservations[i].Stack,
-                        operation = at.operation,
                         // If this task operates on the target with the correct operation, it should fulfill the promise.
-                        promise = (promiseTarget == at.storage && promiseOperation == at.operation) ? promise : null,
+                        promise = (promiseTarget == at.storage && promiseIsTake == taskIsTake) ? promise : null,
                     });
                 }
 
@@ -379,23 +384,28 @@ namespace LocustHives.Game.Logistics.Locust
             });
         }
 
-        public IEnumerable<WorkerEffort> GetEfforts(ItemStack stack, ILogisticsStorage target, LogisticsOperation operation)
+        public IEnumerable<WorkerEffort> GetEfforts(ItemStack stack, ILogisticsStorage target)
         {
             // Get this worker's hive. Bail if not in a hive.
             if (!logisticsSystem.WorkerMembership.GetMembershipOf(this, out var hiveId)) yield break;
 
-            if (operation == LogisticsOperation.Take)
-            {
-                // Check for room, bail if we don't have any.
-                uint canAccept = inventory.CanAccept(stack);
-                if (canAccept < stack.StackSize) yield break;
+            bool isTake = stack.StackSize < 0;
+            uint absStackSize = (uint)Math.Abs(stack.StackSize);
 
+            if (isTake)
+            {
+                // Check how much room this worker has
+                uint canAccept = inventory.CanAccept(stack);
+
+                // If no room, bail
+                if (canAccept == 0) yield break;
 
                 foreach(var method in target.AccessMethods)
                 {
                     if(!(method is IInWorldStorageAccessMethod iwmethod)) continue;
 
-                    uint canProvide = method.CanDo(stack, operation);
+                    // Check how much can be taken
+                    uint canProvide = method.CanDo(stack);
 
                     // Skip methods that don't have the item
                     if (canProvide == 0) continue;
@@ -403,30 +413,29 @@ namespace LocustHives.Game.Logistics.Locust
                     var path = ComputePath(entity.Pos.AsBlockPos, iwmethod.Position.AsBlockPos);
                     if(path == null) continue;
 
-                    var toTransfer = Math.Min(canAccept, canProvide);
+                    var toTransfer = Math.Min(absStackSize, Math.Min(canAccept, canProvide));
+                    if (toTransfer == 0) continue;
 
                     // To take, we only have one effort that simply takes once.
                     // This could be improved to try and drop off items first, etc.
                     yield return CreateEffort(
                         toTransfer,
                         ComputeTravelTime(path),
-                        stack,
+                        stack, // negative = Take
                         target,
-                        LogisticsOperation.Take,
                         [
                             (
                                 target,
                                 method,
-                                LogisticsOperation.Take,
-                                toTransfer
+                                -(int)toTransfer // negative = Take
                             )
                         ]);
                 }
             }
-            else if(operation == LogisticsOperation.Give)
+            else // Give (positive stack size)
             {
                 uint workerAlreadyHas = inventory.CanProvide(stack);
-                uint missingCount = (uint)Math.Max(stack.StackSize - workerAlreadyHas, 0);
+                uint missingCount = (uint)Math.Max(absStackSize - workerAlreadyHas, 0);
 
 
                 // If we still need more items, we have one strategy for now: search storages of the hive this worker is in for stuff to take first.
@@ -441,14 +450,15 @@ namespace LocustHives.Game.Logistics.Locust
                     uint canAccept = inventory.CanAccept(stack);
                     if(canAccept != 0)
                     {
-                        var takeStack = stack.CloneWithSize((int)Math.Min(missingCount, canAccept));
+                        // Use negative stack for Take query
+                        var takeStack = stack.CloneWithSize(-(int)Math.Min(missingCount, canAccept));
                         uint availableToTake;
                         foreach (var storage in logisticsSystem.StorageMembership.GetMembersOf(hiveId))
                         {
                             if (storage == target) continue;
                             foreach (var method in storage.AccessMethods)
                             {
-                                availableToTake = method.CanDo(takeStack, LogisticsOperation.Take);
+                                availableToTake = method.CanDo(takeStack);
                                 if (availableToTake != 0) potentialTakeOps.Add((storage, method, availableToTake));
                             }
                         }
@@ -460,17 +470,17 @@ namespace LocustHives.Game.Logistics.Locust
                 {
                     if (!(method is IInWorldStorageAccessMethod iwmethod)) continue;
 
-                    // Make sure we can give with this method.
+                    // Make sure we can give with this method (positive stack = Give).
                     // a. we might not be able to give with this particular method
                     // b. there may no longer be room since the promise/request was made.
-                    uint canAccept = method.CanDo(stack, LogisticsOperation.Give);
+                    uint canAccept = method.CanDo(stack);
 
                     // Skip methods that don't have room
                     if (canAccept == 0) continue;
 
                     var givePos = iwmethod.Position.AsBlockPos;
 
-                    // If we need to take first, 
+                    // If we need to take first,
                     if (potentialTakeOps != null)
                     {
                         // yield efforts that have a task to take first from another storage
@@ -490,21 +500,18 @@ namespace LocustHives.Game.Logistics.Locust
                             yield return CreateEffort(
                                 toGive,
                                 ComputeTravelTime(takePath) + ComputeTravelTime(transferPath),
-                                stack,
+                                stack, // positive = Give
                                 target,
-                                LogisticsOperation.Give,
                                 [
                                     (
                                         takeStorage,
                                         takeMethod,
-                                        LogisticsOperation.Take,
-                                        toTake
+                                        -(int)toTake // negative = Take
                                     ),
                                     (
                                         target,
                                         method,
-                                        LogisticsOperation.Give,
-                                        toGive
+                                        (int)toGive // positive = Give
                                     )
                                 ]);
                         }
@@ -519,15 +526,13 @@ namespace LocustHives.Game.Logistics.Locust
                         yield return CreateEffort(
                             toGive,
                             ComputeTravelTime(givePath),
-                            stack,
+                            stack, // positive = Give
                             target,
-                            LogisticsOperation.Give,
                             [
                                 (
                                     target,
                                     method,
-                                    LogisticsOperation.Give,
-                                    toGive
+                                    (int)toGive // positive = Give
                                 )
                             ]);
                     }

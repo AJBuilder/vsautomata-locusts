@@ -22,40 +22,6 @@ namespace LocustHives.Systems.Logistics.Core
     }
 
     /// <summary>
-    /// An operation to perform on storage.
-    /// Give: Give the target storage the stack
-    /// Take: Take the stack from the target storage
-    /// </summary>
-    public enum LogisticsOperation
-    {
-        Give,
-        Take,
-    }
-
-    public static class ItemStackLogisticsExtensions
-    {
-        /// <summary>
-        /// Normalize the stack and operation so that the stack size is non-zero and positive.
-        /// </summary>
-        /// <param name="stack"></param>
-        /// <param name="operation"></param>
-        public static void Normalize(this ItemStack stack, ref LogisticsOperation operation)
-        {
-            // Flip the operation if the requested count is negative for some reason.
-            if (stack.StackSize < 0)
-            {
-                stack.StackSize = -stack.StackSize;
-                operation = operation == LogisticsOperation.Give ? LogisticsOperation.Take : LogisticsOperation.Give;
-            }
-            else
-            {
-                // Normalize to 1? Not sure how to handle this case.
-                if (stack.StackSize == 0) stack.StackSize = 1; 
-            }
-        }
-    }
-
-    /// <summary>
     /// A promise is a handle object that is used to communicate intent to perform a logistics operation.
     /// </summary>
     public class LogisticsPromise
@@ -76,25 +42,21 @@ namespace LocustHives.Systems.Logistics.Core
 
         /// <summary>
         /// The stack to be given/taken.
-        /// 
-        /// On construction the stack size is normalized to always be positive.
-        /// Flipping the operation if necessary.
+        ///
+        /// Positive stack size = Give (storage receives items)
+        /// Negative stack size = Take (storage provides items)
         /// </summary>
         public ItemStack Stack { get; }
         public ILogisticsStorage Target { get; }
         public LogisticsPromiseState State => state;
-        public LogisticsOperation Operation { get; }
 
         public uint Fulfilled => fulfilled;
 
-        public LogisticsPromise(ItemStack stack, ILogisticsStorage target, LogisticsOperation operation)
+        public LogisticsPromise(ItemStack stack, ILogisticsStorage target)
         {
-            stack = stack.Clone();
-            stack.Normalize(ref operation);
-            Stack = stack;
+            Stack = stack.Clone();
             Target = target;
             state = LogisticsPromiseState.Unfulfilled;
-            Operation = operation;
             fulfilled = 0;
         }
 
@@ -107,13 +69,15 @@ namespace LocustHives.Systems.Logistics.Core
             {
                 fulfilled += count;
 
+                var targetCount = (uint)Math.Abs(Stack.StackSize);
+
                 // We have to set the state before triggering the fulfillment event because if this fulfillment
                 // completely fulfills another promise whose completion would cause this promise to be cancelled,
                 // this promise needs to know whether this is actually cancelled or completed. (See AddChild)
-                if (fulfilled >= Stack.StackSize) state = LogisticsPromiseState.Fulfilled;
+                if (fulfilled >= targetCount) state = LogisticsPromiseState.Fulfilled;
 
                 FulfillmentEvent?.Invoke(count, byWorker);
-                if (fulfilled >= Stack.StackSize) CompletedEvent?.Invoke(LogisticsPromiseState.Fulfilled);
+                if (fulfilled >= targetCount) CompletedEvent?.Invoke(LogisticsPromiseState.Fulfilled);
             }
         }
 

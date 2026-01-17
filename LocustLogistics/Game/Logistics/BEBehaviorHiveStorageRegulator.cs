@@ -16,40 +16,17 @@ namespace LocustHives.Game.Logistics
     public class BEBehaviorHiveStorageRegulator : BlockEntityBehavior, IStorageRegulator
     {
         ItemStack trackedItem;
-        uint targetCount = 1;
         BlockFacing facing;
         LogisticsSystem modSystem;
         List<LogisticsPromise> promises;
+        int clientPromisedAmount;
 
         public ItemStack TrackedItem
         {
-            get => trackedItem?.Clone();
+            get => trackedItem;
             set
             {
-                trackedItem = value?.Clone();
-                if (trackedItem != null)
-                {
-                    trackedItem.StackSize = 1;
-                }
-                Blockentity.MarkDirty();
-                CheckInventoryLevel();
-            }
-        }
-
-        public uint TargetCount
-        {
-            get => targetCount;
-            set
-            {
-                if (trackedItem != null)
-                {
-                    int maxStack = trackedItem.Collectible.MaxStackSize;
-                    targetCount = Math.Max(1u, Math.Min(value, (uint)maxStack));
-                }
-                else
-                {
-                    targetCount = Math.Max(1u, value);
-                }
+                trackedItem = value;
                 Blockentity.MarkDirty();
                 CheckInventoryLevel();
             }
@@ -102,64 +79,39 @@ namespace LocustHives.Game.Logistics
             var inventory = storage.Inventory;
             if (inventory == null) return;
 
-            // Get current level using CanProvide
-            uint currentLevel = (uint)inventory.CanProvide(trackedItem);
+            // Get current level
+            uint currentLevel = inventory.CanProvide(trackedItem);
 
             // Calculate unfulfilled amount (accounting for active promises)
-            uint promisedAmount = (uint)promises
+            var promisedAmount = promises
                 .Where(p => p.State == LogisticsPromiseState.Unfulfilled)
                 .Sum(p => p.Stack.StackSize);
 
-            if (currentLevel > targetCount)
-            {
-                // Too many items - push excess
-                uint excess = currentLevel - targetCount - promisedAmount;
-                if (excess > 0)
-                {
-                    var stack = trackedItem.Clone();
-                    stack.StackSize = (int)excess;
+            var promisedLevel = Math.Max(0, currentLevel + promisedAmount);
 
-                    if (modSystem.StorageMembership.GetMembershipOf(storage, out var hiveId))
-                    {
-                        var promise = modSystem.GetNetworkFor(hiveId)?.Push(stack, AttachedStorage);
-                        if (promise != null)
-                        {
-                            promise.CompletedEvent += (state) =>
-                            {
-                                promises.Remove(promise);
-                                Blockentity.MarkDirty();
-                                CheckInventoryLevel();
-                            };
-                            promises.Add(promise);
-                            Blockentity.MarkDirty();
-                        }
-                    }
-                }
-            }
-            else if (currentLevel < targetCount)
+            var targetCount = (uint)Math.Max(0, trackedItem.StackSize);
+
+            var needed = (int)Math.Clamp(targetCount - promisedLevel, int.MinValue, int.MaxValue);
+            if(needed != 0)
             {
-                // Too few items - pull deficit
-                uint deficit = targetCount - currentLevel - promisedAmount;
-                if (deficit > 0)
+                var stack = trackedItem.CloneWithSize(needed);
+
+                if (modSystem.StorageMembership.GetMembershipOf(storage, out var hiveId))
                 {
-                    var stack = trackedItem.Clone();
-                    stack.StackSize = (int)deficit;
-                    if (modSystem.StorageMembership.GetMembershipOf(storage, out var hiveId))
+                    var promise = modSystem.GetNetworkFor(hiveId)?.Request(stack, AttachedStorage);
+                    if (promise != null)
                     {
-                        var promise = modSystem.GetNetworkFor(hiveId)?.Pull(stack, AttachedStorage);
-                        if (promise != null)
+                        promise.CompletedEvent += (state) =>
                         {
-                            promise.CompletedEvent += (state) =>
-                            {
-                                promises.Remove(promise);
-                                Blockentity.MarkDirty();
-                                CheckInventoryLevel();
-                            };
-                            promises.Add(promise);
+                            promises.Remove(promise);
                             Blockentity.MarkDirty();
-                        }
+                            CheckInventoryLevel();
+                        };
+                        promises.Add(promise);
+                        Blockentity.MarkDirty();
                     }
                 }
+
             }
         }
 
@@ -199,8 +151,7 @@ namespace LocustHives.Game.Logistics
             {
                 tree.SetItemstack("trackedItem", trackedItem);
             }
-            tree.SetInt("targetCount", (int)targetCount);
-            tree.SetInt("promiseCount", promises?.Count ?? 0);
+            tree.SetInt("promisedAmount", promises?.Sum(p => p.Stack.StackSize) ?? 0);
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
@@ -209,7 +160,7 @@ namespace LocustHives.Game.Logistics
 
             trackedItem = tree.GetItemstack("trackedItem");
             if(Api != null && trackedItem != null && !trackedItem.ResolveBlockOrItem(Api.World)) trackedItem = null;
-            targetCount = (uint)tree.GetInt("targetCount", 1);
+            clientPromisedAmount = tree.GetInt("promisedAmount");
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
@@ -219,14 +170,14 @@ namespace LocustHives.Game.Logistics
             if (trackedItem != null)
             {
                 dsc.AppendLine($"Tracking: {trackedItem.GetName()}");
-                dsc.AppendLine($"Target: {targetCount}");
+                dsc.AppendLine($"Target: {Math.Max(0, trackedItem.StackSize)}");
                 var inventory = AttachedStorage?.Inventory;
                 if (inventory != null)
                 {
-                    uint currentLevel = (uint)inventory.CanProvide(trackedItem);
+                    uint currentLevel = inventory.CanDo(trackedItem.CloneWithSize(-1));
                     dsc.AppendLine($"Current: {currentLevel}");
                 }
-                dsc.AppendLine($"Active promises: {promises?.Count ?? 0}");
+                dsc.AppendLine($"Active promises: {clientPromisedAmount}");
             }
             else
             {

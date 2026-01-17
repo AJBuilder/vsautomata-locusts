@@ -13,29 +13,7 @@ namespace LocustHives.Systems.Logistics
 {
     public static class Util
     {
-        /// <summary>
-        /// Returns how much room this inventory has for the given stack.
-        /// </summary>
-        /// <param name="inventory"></param>
-        /// <param name="stack"></param>
-        /// <returns></returns>
-        public static uint CanAccept(this IInventory inventory, ItemStack stack)
-        {
-            return (uint)inventory.Sum(slot =>
-            {
-                var s = slot.Itemstack;
-                if (s == null) return stack.Collectible.MaxStackSize;
-                // TODO: Should this be stack.Satisfies(s)?
-                else return s.Satisfies(stack) ? Math.Max(0, stack.Collectible.MaxStackSize - s.StackSize) : 0;
-            });
-        }
 
-        /// <summary>
-        /// Returns a count of all items matching the stack.
-        /// </summary>
-        /// <param name="inventory"></param>
-        /// <param name="stack"></param>
-        /// <returns></returns>
         public static uint CanProvide(this IInventory inventory, ItemStack stack)
         {
             return (uint)inventory.Sum(slot =>
@@ -46,6 +24,36 @@ namespace LocustHives.Systems.Logistics
             });
         }
 
+        public static uint CanAccept(this IInventory inventory, ItemStack stack)
+        {
+            return (uint)Math.Max(0, inventory.Sum(slot =>
+            {
+                var s = slot.Itemstack;
+                if (s == null) return stack.Collectible.MaxStackSize;
+                else return s.Satisfies(stack) ? Math.Max(0, stack.Collectible.MaxStackSize - s.StackSize) : 0;
+            }));
+        }
+
+        /// <summary>
+        /// Returns how much of the operation can be performed.
+        /// Positive stack size = how much room for receiving (Give)
+        /// Negative stack size = how much available to provide (Take)
+        /// Will not be more in quantity than the stack size.
+        /// </summary>
+        public static uint CanDo(this IInventory inventory, ItemStack stack)
+        {
+            if (stack.StackSize > 0)
+            {
+                // Give: check room
+                return Math.Min((uint)stack.StackSize, CanAccept(inventory, stack));
+            }
+            else if (stack.StackSize < 0)
+            {
+                // Take: check available
+                return Math.Min((uint)stack.StackSize, CanProvide(inventory, stack));
+            }
+            return 0;
+        }
 
         public static ItemStack CloneWithSize(this ItemStack stack, int size)
         {

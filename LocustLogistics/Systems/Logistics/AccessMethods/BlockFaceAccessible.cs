@@ -13,14 +13,14 @@ namespace LocustHives.Systems.Logistics.AccessMethods
 
     public readonly struct BlockFaceAccessible : IInWorldStorageAccessMethod
     {
-        readonly System.Func<ItemStack, LogisticsOperation, uint> onCanDo;
+        readonly System.Func<ItemStack, uint> onCanDo;
         public BlockPos BlockPosition { get; }
         public BlockFacing Face { get; }
         public int Priority { get; }
 
         /// <summary>
         /// Returns the center of the face.
-        /// 
+        ///
         /// The coordinates are nudged slightly so that performing Math.Floor would yield the block pos that they are in.
         /// </summary>
         public Vec3d Position
@@ -39,7 +39,7 @@ namespace LocustHives.Systems.Logistics.AccessMethods
             }
         }
 
-        public BlockFaceAccessible(BlockPos pos, BlockFacing face, int priority, System.Func<ItemStack, LogisticsOperation, uint> onCanDo)
+        public BlockFaceAccessible(BlockPos pos, BlockFacing face, int priority, System.Func<ItemStack, uint> onCanDo)
         {
             BlockPosition = pos;
             Face = face;
@@ -47,9 +47,9 @@ namespace LocustHives.Systems.Logistics.AccessMethods
             this.onCanDo = onCanDo;
         }
 
-        public uint CanDo(ItemStack stack, LogisticsOperation operation)
+        public uint CanDo(ItemStack stack)
         {
-            return onCanDo(stack, operation);
+            return onCanDo(stack);
         }
 
     };

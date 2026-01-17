@@ -1,4 +1,5 @@
 ﻿using LocustHives.Game.Util;
+using LocustHives.Systems.Logistics;
 using LocustHives.Systems.Logistics.Core;
 using LocustHives.Systems.Logistics.Core.Interfaces;
 using System;
@@ -118,7 +119,7 @@ namespace LocustHives.Game.Logistics
 
         private bool TryPush(ILogisticsStorage storage, ItemStack stack)
         {
-            var request = Network?.Push(stack, storage);
+            var request = Network?.Request(stack.CloneWithSize(-stack.StackSize), storage);
             if (request == null) return false;
 
             request.CompletedEvent += (state) =>

@@ -20,14 +20,20 @@ namespace LocustHives.Systems.Logistics.Core.Interfaces
 
         IEnumerable<IStorageAccessMethod> AccessMethods { get; }
 
+        IEnumerable<LogisticsReservation> Reservations { get; }
+
         /// <summary>
         /// Reserve the stack/room for the given stack from being considered when it's access methods are queried.
-        /// 
+        ///
+        /// Stack sign indicates operation:
+        /// - Positive = Give (reserve room)
+        /// - Negative = Take (reserve items)
+        ///
         /// Should return null if unable.
         /// </summary>
         /// <param name="stack"></param>
         /// <returns></returns>
-        LogisticsReservation TryReserve(ItemStack stack, LogisticsOperation operation);
+        LogisticsReservation TryReserve(ItemStack stack);
 
     }
 }

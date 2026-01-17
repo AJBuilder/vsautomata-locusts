@@ -36,17 +36,23 @@ namespace LocustHives.Systems.Logistics.Core
 
         public LogisticsPromise Push(ItemStack stack, ILogisticsStorage from)
         {
-            return Request(stack, from, LogisticsOperation.Take);
+            if (stack.StackSize == 0) return null;
+            stack = stack.Clone();
+            stack.StackSize = -Math.Abs(stack.StackSize); // Negate to indicate Take
+            return Request(stack, from);
         }
 
         public LogisticsPromise Pull(ItemStack stack, ILogisticsStorage into)
         {
-            return Request(stack, into, LogisticsOperation.Give);
+            if (stack.StackSize == 0) return null;
+            stack = stack.Clone();
+            stack.StackSize = Math.Abs(stack.StackSize); // Positive to indicate Give
+            return Request(stack, into);
         }
 
-        public LogisticsPromise Request(ItemStack stack, ILogisticsStorage target, LogisticsOperation operation)
+        public LogisticsPromise Request(ItemStack stack, ILogisticsStorage target)
         {
-            var promise = new LogisticsPromise(stack, target, operation);
+            var promise = new LogisticsPromise(stack, target);
             queuedPromises.Enqueue(promise);
             return promise;
         }
@@ -67,17 +73,20 @@ namespace LocustHives.Systems.Logistics.Core
                 return;
             }
 
-            var countLeft = (uint)Math.Min(0, promise.Stack.StackSize - countCommissioned.GetValueOrDefault(promise));
+            var targetCount = (uint)Math.Abs(promise.Stack.StackSize);
+            var countLeft = (uint)Math.Max(0, targetCount - countCommissioned.GetValueOrDefault(promise));
             while (countLeft > 0)
             {
-                var stack = promise.Stack.GetEmptyClone();
-                stack.StackSize = (int)countLeft;
+                var stack = promise.Stack.Clone();
+                // Preserve the sign but update the magnitude to only what we need
+                stack.StackSize = promise.Stack.StackSize > 0 ? (int)countLeft : -(int)countLeft;
 
                 LogisticsPromise bestPromise = null;
                 Workers
                     // 1. For each worker, get all of it's efforts.
                     // TODO: Call GetEfforts on the main thread.
-                    .SelectMany(worker => worker.GetEfforts(stack, promise.Target, promise.Operation))
+                    .SelectMany(worker => worker.GetEfforts(stack, promise.Target))
+                    .Where(effort => effort.CountAvailable != 0)
 
                     // 2. Order efforts first by how fast they are and second by count.
                     .OrderBy(effort => effort.Time)
@@ -100,7 +109,7 @@ namespace LocustHives.Systems.Logistics.Core
                 else
                 {
                     // 5. Add as a child and track how much more we need promised.
-                    var countPromised = (uint)bestPromise.Stack.StackSize;
+                    var countPromised = (uint)Math.Abs(bestPromise.Stack.StackSize);
                     countLeft -= countPromised;
                     promise.AddChild(bestPromise);
                     bestPromise.CompletedEvent += (state) =>
@@ -119,7 +128,7 @@ namespace LocustHives.Systems.Logistics.Core
             }
 
             // Update our record of how much was commissioned
-            countCommissioned[promise] = (uint)promise.Stack.StackSize - countLeft;
+            countCommissioned[promise] = targetCount - countLeft;
         }
 
     }

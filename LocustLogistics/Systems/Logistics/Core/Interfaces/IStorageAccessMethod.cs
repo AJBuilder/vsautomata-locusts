@@ -16,7 +16,14 @@ namespace LocustHives.Systems.Logistics.Core.Interfaces
         /// </summary>
         int Priority { get; }
 
-        uint CanDo(ItemStack stack, LogisticsOperation operation);
+        /// <summary>
+        /// Returns how much of the operation can be performed.
+        ///
+        /// Stack sign indicates operation:
+        /// - Positive = Give (check room)
+        /// - Negative = Take (check available)
+        /// </summary>
+        uint CanDo(ItemStack stack);
 
     }
 
