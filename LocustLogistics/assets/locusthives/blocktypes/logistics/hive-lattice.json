@@ -1,0 +1,27 @@
+{
+  "code": "hivelattice",
+  "entityClass": "HiveLattice",
+  "entityBehaviors": [
+    { "name": "HiveTunable" },
+    {"name": "HiveLattice" }
+  ],
+  "attributes": {
+    "quantitySlots": 30
+  },
+  "creativeinventory": {
+    "general": [ "*" ]
+  },
+  "blockmaterial": "Cloth",
+  "drawtype": "json",
+  "shape": { "base": "block/hive-lattice"},
+  "textures": {
+    "cloth": { "base": "game:block/cloth/burlap/sides" },
+    "metal": { "base": "game:block/metal/corroded/normal2" }
+  },
+  "lightAbsorption": 0,
+  "sidesolid": { "all": true },
+  "sideopaque": { "all": true },
+  "replaceable": 300,
+  "resistance": 20,
+  "materialDensity": 300
+}

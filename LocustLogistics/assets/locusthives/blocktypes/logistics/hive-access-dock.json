@@ -25,9 +25,9 @@
   "creativeinventory": {
     "general": [ "*-north" ]
   },
-  "blockmaterial": "Metal",
+  "blockmaterial": "Wood",
   "drawtype": "json",
-  "shapebytype": {
+  "shapeByType": {
     "*-up": {
       "base": "block/hive-access-dock",
       "rotateX": -90
@@ -59,7 +59,7 @@
     "black": { "base": "game:item/armor/cloth/black" }
   },
   "lightAbsorption": 0,
-  "sidesolidbytype": {
+  "sidesolidByType": {
     "*-up": {
       "up": false,
       "down": false,
@@ -109,10 +109,60 @@
       "west": false
     }
   },
-  "sideopaque": { "all": false },
+  "sideopaqueByType": {
+    "*-up": {
+      "up": false,
+      "down": false,
+      "north": true,
+      "east": true,
+      "south": true,
+      "west": true
+    },
+    "*-down": {
+      "up": false,
+      "down": false,
+      "north": true,
+      "east": true,
+      "south": true,
+      "west": true
+    },
+    "*-north": {
+      "up": true,
+      "down": true,
+      "north": false,
+      "east": true,
+      "south": false,
+      "west": true
+    },
+    "*-east": {
+      "up": true,
+      "down": true,
+      "north": true,
+      "east": false,
+      "south": true,
+      "west": false
+    },
+    "*-south": {
+      "up": true,
+      "down": true,
+      "north": false,
+      "east": true,
+      "south": false,
+      "west": true
+    },
+    "*-west": {
+      "up": true,
+      "down": true,
+      "north": true,
+      "east": false,
+      "south": true,
+      "west": false
+    }
+  },
   "replaceable": 300,
   "resistance": 20,
   "materialDensity": 300,
+  "W": null,
   "drops": [
     {
       "type": "block",

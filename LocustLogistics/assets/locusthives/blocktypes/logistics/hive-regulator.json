@@ -206,7 +206,7 @@
       }
     }
   ],
-  "blockmaterial": "Wood",
+  "blockmaterial": "Metal",
   "tpHandTransform": {
     "translation": {
       "x": 0.4,
