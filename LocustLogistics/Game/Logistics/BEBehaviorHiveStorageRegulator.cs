@@ -10,6 +10,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace LocustHives.Game.Logistics
 {
@@ -82,19 +83,16 @@ namespace LocustHives.Game.Logistics
             // Get current level
             uint currentLevel = inventory.CanProvide(trackedItem);
 
-            // Calculate unfulfilled amount (accounting for active promises)
-            var promisedAmount = promises
-                .Where(p => p.State == LogisticsPromiseState.Unfulfilled)
-                .Sum(p => p.Stack.StackSize);
-
-            var promisedLevel = Math.Max(0, currentLevel + promisedAmount);
-
             var targetCount = (uint)Math.Max(0, trackedItem.StackSize);
 
-            var needed = (int)Math.Clamp(targetCount - promisedLevel, int.MinValue, int.MaxValue);
-            if(needed != 0)
+            var promised = promises
+                    .Where(p => p.State == LogisticsPromiseState.Unfulfilled)
+                    .Sum(p => p.Stack.StackSize);
+
+            var need = (int)targetCount - (int)currentLevel - promised;
+            if(need != 0)
             {
-                var stack = trackedItem.CloneWithSize(needed);
+                var stack = trackedItem.CloneWithSize(need);
 
                 if (modSystem.StorageMembership.GetMembershipOf(storage, out var hiveId))
                 {

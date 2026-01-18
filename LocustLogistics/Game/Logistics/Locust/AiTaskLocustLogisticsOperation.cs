@@ -59,10 +59,12 @@ namespace LocustHives.Game.Logistics.Locust
                 seekingAccess = pathTraverser.NavigateTo_Async(
                     method.Position,
                     moveSpeed,
-                    0.5f,
+                    entity.SelectionBox.XSize,
                     OnGoalReached,
                     OnStuck,
-                    OnNoPath
+                    OnNoPath,
+                    999,
+                    0
                 );
             }
         }
@@ -102,11 +104,13 @@ namespace LocustHives.Game.Logistics.Locust
 
         private void OnStuck()
         {
+            pathTraverser.Stop();
             seekingAccess = false;
         }
 
         private void OnNoPath()
         {
+            pathTraverser.Stop();
             seekingAccess = false;
         }
 

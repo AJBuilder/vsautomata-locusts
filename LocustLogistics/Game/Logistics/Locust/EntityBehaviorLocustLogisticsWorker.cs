@@ -286,8 +286,7 @@ namespace LocustHives.Game.Logistics.Locust
                 toPos,
                 maxFallHeight,
                 stepHeight,
-                entity.CollisionBox,
-                999);
+                entity.CollisionBox);
         }
 
         private float ComputeTravelTime(List<Vec3d> path)

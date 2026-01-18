@@ -20,8 +20,6 @@ namespace LocustHives.Systems.Logistics.Core.Interfaces
 
         IEnumerable<IStorageAccessMethod> AccessMethods { get; }
 
-        IEnumerable<LogisticsReservation> Reservations { get; }
-
         /// <summary>
         /// Reserve the stack/room for the given stack from being considered when it's access methods are queried.
         ///
