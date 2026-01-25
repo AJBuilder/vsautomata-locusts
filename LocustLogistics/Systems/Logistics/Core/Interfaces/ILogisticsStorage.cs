@@ -12,26 +12,9 @@ namespace LocustHives.Systems.Logistics.Core.Interfaces
     /// </summary>
     public interface ILogisticsStorage
     {
-        /// <summary>
-        /// The inventory of this storage. NOT to be used when checking for when an operation can be done.
-        /// Use the access methods as they should account for reserved stacks.
-        /// </summary>
-        IInventory Inventory { get; }
+        IEnumerable<ItemStack> Stacks {get;}
 
         IEnumerable<IStorageAccessMethod> AccessMethods { get; }
-
-        /// <summary>
-        /// Reserve the stack/room for the given stack from being considered when it's access methods are queried.
-        ///
-        /// Stack sign indicates operation:
-        /// - Positive = Give (reserve room)
-        /// - Negative = Take (reserve items)
-        ///
-        /// Should return null if unable.
-        /// </summary>
-        /// <param name="stack"></param>
-        /// <returns></returns>
-        LogisticsReservation TryReserve(ItemStack stack);
 
     }
 }

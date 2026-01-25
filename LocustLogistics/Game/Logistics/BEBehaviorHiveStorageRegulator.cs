@@ -77,11 +77,10 @@ namespace LocustHives.Game.Logistics
             var storage = AttachedStorage;
             if(storage == null) return;
 
-            var inventory = storage.Inventory;
-            if (inventory == null) return;
+            var stacks = storage.Stacks;
 
             // Get current level
-            uint currentLevel = inventory.CanProvide(trackedItem);
+            uint currentLevel = (uint)stacks.Where(s => s.Satisfies(trackedItem)).Sum(s => Math.Max(0, s.StackSize));
 
             var targetCount = (uint)Math.Max(0, trackedItem.StackSize);
 
@@ -117,9 +116,7 @@ namespace LocustHives.Game.Logistics
         {
             if(Api is ICoreServerAPI)
             {
-                promises.ForEach(r => r.Cancel());
-                promises.Clear();
-
+                while(promises.First() != null) promises.First().Cancel();
             }
         }
 
@@ -169,10 +166,11 @@ namespace LocustHives.Game.Logistics
             {
                 dsc.AppendLine($"Tracking: {trackedItem.GetName()}");
                 dsc.AppendLine($"Target: {Math.Max(0, trackedItem.StackSize)}");
-                var inventory = AttachedStorage?.Inventory;
-                if (inventory != null)
+                var storage = AttachedStorage;
+                var accessMethod = storage?.AccessMethods?.FirstOrDefault();
+                if (accessMethod != null)
                 {
-                    uint currentLevel = inventory.CanDo(trackedItem.CloneWithSize(-1));
+                    uint currentLevel = accessMethod.CanDo(trackedItem.CloneWithSize(-1));
                     dsc.AppendLine($"Current: {currentLevel}");
                 }
                 dsc.AppendLine($"Active promises: {clientPromisedAmount}");

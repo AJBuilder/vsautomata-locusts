@@ -16,6 +16,7 @@ namespace LocustHives.Systems.Logistics.AccessMethods
         readonly System.Func<ItemStack, uint> onCanDo;
         readonly System.Func<ItemStack, ItemSlot, uint> onTryTakeOut;
         readonly System.Func<ItemSlot, uint, uint> onTryPutInto;
+        readonly System.Func<ItemStack, LogisticsReservation> onTryReserve;
         public BlockPos BlockPosition { get; }
         public BlockFacing Face { get; }
         public int Priority { get; }
@@ -47,7 +48,8 @@ namespace LocustHives.Systems.Logistics.AccessMethods
             int priority,
             System.Func<ItemStack, uint> onCanDo,
             System.Func<ItemStack, ItemSlot, uint> onTryTakeOut,
-            System.Func<ItemSlot, uint, uint> onTryPutInto)
+            System.Func<ItemSlot, uint, uint> onTryPutInto,
+            System.Func<ItemStack, LogisticsReservation> onTryReserve)
         {
             BlockPosition = pos;
             Face = face;
@@ -55,6 +57,7 @@ namespace LocustHives.Systems.Logistics.AccessMethods
             this.onCanDo = onCanDo;
             this.onTryTakeOut = onTryTakeOut;
             this.onTryPutInto = onTryPutInto;
+            this.onTryReserve = onTryReserve;
         }
 
         public uint CanDo(ItemStack stack)
@@ -70,6 +73,11 @@ namespace LocustHives.Systems.Logistics.AccessMethods
         public uint TryPutInto(ItemSlot sourceSlot, uint quantity)
         {
             return onTryPutInto(sourceSlot, quantity);
+        }
+
+        public LogisticsReservation TryReserve(ItemStack stack)
+        {
+            return onTryReserve(stack);
         }
 
     };

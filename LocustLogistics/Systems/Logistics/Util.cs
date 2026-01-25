@@ -87,8 +87,6 @@ namespace LocustHives.Systems.Logistics
                     {
                         transferred += (uint)moved;
                         remaining -= (uint)moved;
-                        slot.MarkDirty();
-                        sinkSlot.MarkDirty();
                     }
                 }
             }

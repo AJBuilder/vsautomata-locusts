@@ -101,13 +101,13 @@ namespace LocustHives.Game.Logistics
 
         public void PushAll()
         {
-            var inventory = AttachedStorage?.Inventory;
-            if (inventory == null) return;
+            var storage = AttachedStorage;
+            if (storage == null) return;
 
             CancelAll();
-            foreach (var slot in inventory)
+            foreach (var stack in storage.Stacks)
             {
-                if(!slot.Empty) TryPush(AttachedStorage, slot.Itemstack);
+                if(stack != null) TryPush(storage, stack);
             }
         }
 

@@ -25,29 +25,72 @@ namespace LocustHives.Game.Logistics
         HashSet<LogisticsReservation> reservations;
 
         public override InventoryBase Inventory => inventory;
-        IInventory ILogisticsStorage.Inventory => inventory;
 
         public override string InventoryClassName => "hivelattice";
 
+        public IEnumerable<ItemStack> Stacks
+        {
+            get
+            {
+                foreach(var stack in LocalStacks)
+                {
+                    yield return stack;
+                }
 
+                foreach(var connected in TraverseConnected())
+                {
+                    foreach(var stack in connected.LocalStacks)
+                    {
+                        yield return stack;
+                    }
+                }
+            }
+        }
+
+        public IEnumerable<ItemStack> LocalStacks
+        {
+            get
+            {
+                if(inventory == null) yield break;
+                foreach(var slot in inventory)
+                {
+                    if(slot?.Itemstack != null) yield return slot.Itemstack;
+                }
+            }
+        }
         public IEnumerable<IStorageAccessMethod> AccessMethods
+        {
+            get
+            {
+                // This ones methods
+                foreach(var m in LocalAccessMethods)
+                {
+                    yield return m;
+                }
+
+                // And everything connected
+                foreach (var connected in TraverseConnected())
+                {
+
+                    foreach(var m in connected.LocalAccessMethods)
+                    {
+                        yield return m;
+                    }
+                }
+            }
+        }
+
+        public IEnumerable<IStorageAccessMethod> LocalAccessMethods
         {
             get
             {
                 foreach(var face in AvailableFaces())
                 {
-                    yield return new BlockFaceAccessible(Pos, face, 0, CanDo, TryTakeOut, TryPutInto);
-                }
-
-                foreach (var connected in TraverseConnected())
-                {
-                    foreach(var face in connected.AvailableFaces())
-                    {
-                        yield return new BlockFaceAccessible(connected.Pos, face, 0, CanDo, TryTakeOut, TryPutInto);
-                    }
+                    yield return new BlockFaceAccessible(Pos, face, 0, LocalCanDo, TryTakeOut, TryPutInto, TryReserve);
                 }
             }
         }
+
 
         public override void Initialize(ICoreAPI api)
         {
@@ -56,7 +99,7 @@ namespace LocustHives.Game.Logistics
             base.Initialize(api);
 
 
-            var tunableBehavior = GetBehavior<BEBehaviorLocustHiveTunable>();
+            var tunableBehavior = GetBehavior<IHiveMember>();
             if (tunableBehavior != null)
             {
                 tunableBehavior.OnTuned += (prevHive, hive) =>
@@ -73,13 +116,12 @@ namespace LocustHives.Game.Logistics
 
         protected void InitInventory()
         {
-            var quantitySlots = Block.Attributes["quantitySlots"].AsInt();
+            var quantitySlots = Block?.Attributes["quantitySlots"].AsInt() ?? 0;
             inventory = new InventoryGeneric(quantitySlots, null, null);
             // TODO: Inventory lock and weight stuff
-            if (Api is ICoreServerAPI)
-            {
-                inventory.SlotModified += (int obj) => MarkDirty(false);
-            }
+            inventory.SlotModified += (int obj) => {
+                MarkDirty(false);
+            };
         }
 
         private IEnumerable<BlockFacing> AvailableFaces()
@@ -94,9 +136,9 @@ namespace LocustHives.Game.Logistics
             }
         }
 
-        public LogisticsReservation TryReserve(ItemStack stack)
+        private LogisticsReservation TryReserve(ItemStack stack)
         {
-            var available = CanDo(stack);
+            var available = LocalCanDo(stack);
             if (available >= (uint)Math.Abs(stack.StackSize))
             {
                 var reservation = new LogisticsReservation(stack, this);
@@ -110,14 +152,14 @@ namespace LocustHives.Game.Logistics
             return null;
         }
 
-        private uint CanDo(ItemStack stack)
+        private uint LocalCanDo(ItemStack stack)
         {
             var inventory = Inventory;
             bool isTake = stack.StackSize < 0;
             var reserved = (uint)reservations
                 .Where(r => r.Stack.Satisfies(stack) && (r.Stack.StackSize < 0) == isTake)
                 .Sum(r => Math.Abs(r.Stack.StackSize));
-            return Math.Max(0, inventory.CanDo(stack) - reserved); ;
+            return Math.Max(0, inventory.CanDo(stack) - reserved);
         }
 
         private uint TryTakeOut(ItemStack stack, ItemSlot sinkSlot)

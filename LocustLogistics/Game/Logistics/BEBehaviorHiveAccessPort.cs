@@ -34,12 +34,25 @@ namespace LocustHives.Game.Logistics
             }
         }
 
+        public IEnumerable<ItemStack> Stacks
+        {
+            get
+            {
+                var inv = Inventory;
+                if (inv == null) yield break;
+                foreach (var slot in inv)
+                {
+                    if (slot?.Itemstack != null)
+                        yield return slot.Itemstack;
+                }
+            }
+        }
 
         public IEnumerable<IStorageAccessMethod> AccessMethods
         {
             get
             {
-                yield return new BlockFaceAccessible(Blockentity.Pos, facing.Opposite, 0, CanDo, TryTakeOut, TryPutInto);
+                yield return new BlockFaceAccessible(Blockentity.Pos, facing.Opposite, 0, CanDo, TryTakeOut, TryPutInto, TryReserve);
             }
         }
 
@@ -56,7 +69,7 @@ namespace LocustHives.Game.Logistics
             var facingCode = properties["facingCode"].AsString();
             facing = BlockFacing.FromCode(Blockentity.Block.Variant[facingCode]);
 
-            var tunableBehavior = Blockentity.GetBehavior<BEBehaviorLocustHiveTunable>();
+            var tunableBehavior = Blockentity.GetBehavior<IHiveMember>();
             if (tunableBehavior != null)
             {
                 tunableBehavior.OnTuned += (prevHive, hive) =>
@@ -71,7 +84,7 @@ namespace LocustHives.Game.Logistics
             }
         }
 
-        public LogisticsReservation TryReserve(ItemStack stack)
+        private LogisticsReservation TryReserve(ItemStack stack)
         {
             var available = CanDo(stack);
             if (available >= (uint)Math.Abs(stack.StackSize))

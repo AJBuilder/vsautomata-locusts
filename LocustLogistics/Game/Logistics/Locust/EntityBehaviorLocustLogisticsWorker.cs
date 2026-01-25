@@ -312,7 +312,7 @@ namespace LocustHives.Game.Logistics.Locust
                 for (int i = 0; i < accessTasks.Length; i++)
                 {
                     var at = accessTasks[i];
-                    var reservation = at.storage.TryReserve(promiseStack.CloneWithSize(at.signedCount));
+                    var reservation = at.method.TryReserve(promiseStack.CloneWithSize(at.signedCount));
 
                     // If we fail to get one
                     if (reservation == null)

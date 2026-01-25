@@ -42,6 +42,19 @@ namespace LocustHives.Systems.Logistics.Core.Interfaces
         /// <returns>Amount actually transferred</returns>
         uint TryPutInto(ItemSlot sourceSlot, uint quantity);
 
+
+        /// <summary>
+        /// Reserve the stack/room for the given stack.
+        ///
+        /// Stack sign indicates operation:
+        /// - Positive = Give (reserve room)
+        /// - Negative = Take (reserve items)
+        ///
+        /// Should return null if unable.
+        /// </summary>
+        /// <param name="stack"></param>
+        /// <returns></returns>
+        LogisticsReservation TryReserve(ItemStack stack);
     }
 
     public interface IInWorldStorageAccessMethod : IStorageAccessMethod
