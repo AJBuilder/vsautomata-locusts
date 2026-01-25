@@ -97,7 +97,7 @@ namespace LocustHives.Game.Logistics.Locust
             seekingAccess = false;
             if (curTask.HasValue)
             {
-                curTask.Value.TryDo(worker, entity.Api.World);
+                curTask.Value.TryDo(worker);
                 worker.DidCurrentTask();
             }
         }

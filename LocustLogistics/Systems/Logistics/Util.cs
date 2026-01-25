@@ -66,5 +66,60 @@ namespace LocustHives.Systems.Logistics
         {
             return new BlockPos((int)Math.Floor(pos.X), (int)Math.Floor(pos.Y), (int)Math.Floor(pos.Z));
         }
+
+        /// <summary>
+        /// Attempts to take matching items from inventory slots and transfer them to a sink slot.
+        /// </summary>
+        /// <returns>The amount successfully transferred.</returns>
+        public static uint TryTakeMatching(this IInventory inventory, IWorldAccessor world, ItemStack stack, ItemSlot sinkSlot, uint maxQuantity)
+        {
+            uint remaining = maxQuantity;
+            uint transferred = 0;
+
+            foreach (var slot in inventory)
+            {
+                if (remaining <= 0) break;
+
+                if (slot.Itemstack?.Satisfies(stack) ?? false)
+                {
+                    int moved = slot.TryPutInto(world, sinkSlot, (int)remaining);
+                    if (moved > 0)
+                    {
+                        transferred += (uint)moved;
+                        remaining -= (uint)moved;
+                        slot.MarkDirty();
+                        sinkSlot.MarkDirty();
+                    }
+                }
+            }
+
+            return transferred;
+        }
+
+        /// <summary>
+        /// Attempts to put items from a source slot into the best suited slots in the inventory.
+        /// </summary>
+        /// <returns>The amount successfully transferred.</returns>
+        public static uint TryPutIntoBestSlots(this IInventory inventory, IWorldAccessor world, ItemSlot sourceSlot, uint maxQuantity)
+        {
+            uint remaining = maxQuantity;
+            uint transferred = 0;
+
+            while (remaining > 0 && !sourceSlot.Empty)
+            {
+                var bestSlot = inventory.GetBestSuitedSlot(sourceSlot);
+                if (bestSlot.slot == null) break;
+
+                int moved = sourceSlot.TryPutInto(world, bestSlot.slot, (int)remaining);
+                if (moved <= 0) break;
+
+                transferred += (uint)moved;
+                remaining -= (uint)moved;
+                sourceSlot.MarkDirty();
+                bestSlot.slot.MarkDirty();
+            }
+
+            return transferred;
+        }
     }
 }

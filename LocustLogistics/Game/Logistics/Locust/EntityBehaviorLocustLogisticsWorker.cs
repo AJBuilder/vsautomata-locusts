@@ -42,52 +42,38 @@ namespace LocustHives.Game.Logistics.Locust
         /// </summary>
         public LogisticsPromise promise;
 
-        public uint TryDo(ILogisticsWorker worker, IWorldAccessor accessorForResolve)
+        public uint TryDo(ILogisticsWorker worker)
         {
             bool isTake = stack.StackSize < 0;
-            var (to, from) = isTake
-                ? (worker.Inventory, storage.Inventory)
-                : (storage.Inventory, worker.Inventory);
+            uint quantity = (uint)Math.Abs(stack.StackSize);
+            uint transferred = 0;
 
-            // Transfer stack targeting this storage using the given other inventory as source/sink
-            // depending on the operation.
-            // Iterate through the target inventory, taking/giving items until:
-            // 1. The requested amount has been transferred
-            // 2. Sink has no more room.
-            // 3. Source has no more to transfer
-            uint toTransfer = (uint)Math.Abs(stack.StackSize);
-            
-            // For each source slot
-            foreach(var fromSlot in from)
+            if (isTake)
             {
-                // While there is count to transfer
-                if (toTransfer <= 0) break;
-
-                // and if it has the item
-                if (fromSlot.Itemstack?.Satisfies(stack) ?? false)
+                // Take: find slots in worker inventory to receive items
+                foreach (var workerSlot in worker.Inventory)
                 {
-                    // and while it isn't empty
-                    while (!fromSlot.Empty)
+                    if (transferred >= quantity) break;
+                    var remaining = stack.CloneWithSize((int)(quantity - transferred));
+                    transferred += method.TryTakeOut(remaining, workerSlot);
+                }
+            }
+            else
+            {
+                // Give: find slots in worker inventory with matching items
+                foreach (var workerSlot in worker.Inventory)
+                {
+                    if (transferred >= quantity) break;
+                    if (workerSlot.Itemstack?.Satisfies(stack) ?? false)
                     {
-                        // keep transfering to slots
-                        var toSlot = to.GetBestSuitedSlot(fromSlot).slot;
-                        if (toSlot == null) break; // No more room
-
-                        var transfered = fromSlot.TryPutInto(accessorForResolve, toSlot, (int)toTransfer);
-                        if (transfered == 0) break; // No more room. (Should have been caught above though...)
-                        toTransfer -= (uint)transfered;
-
-                        toSlot.MarkDirty();
-                        fromSlot.MarkDirty();
+                        uint remaining = (quantity - transferred);
+                        transferred += method.TryPutInto(workerSlot, remaining);
                     }
                 }
             }
-            var total =  (uint)stack.StackSize - toTransfer;
-            if (promise != null)
-            {
-                promise.Fulfill(total, worker);
-            }
-            return total;
+
+            if (promise != null) promise.Fulfill(transferred, worker);
+            return transferred;
         }
     }
 
@@ -318,6 +304,7 @@ namespace LocustHives.Game.Logistics.Locust
         {
             return new WorkerEffort(bestCount, time, (requestedCount) =>
             {
+                // TODO: Don't bail. Instead accept if it is targeting the same storage.
                 if (queuedStorageAccess.Any()) return null;
 
                 // First, try to get the necessary reservations for all tasks

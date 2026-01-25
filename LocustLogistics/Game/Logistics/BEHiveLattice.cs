@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
@@ -33,12 +34,16 @@ namespace LocustHives.Game.Logistics
         {
             get
             {
-                foreach (var face in BlockFacing.ALLFACES)
+                foreach(var face in AvailableFaces())
                 {
-                    if(Api.World.BlockAccessor.GetBlock(Pos.AddCopy(face)).Id == 0)
+                    yield return new BlockFaceAccessible(Pos, face, 0, CanDo, TryTakeOut, TryPutInto);
+                }
+
+                foreach (var connected in TraverseConnected())
+                {
+                    foreach(var face in connected.AvailableFaces())
                     {
-                        // Only faces that are airs
-                        yield return new BlockFaceAccessible(Pos, face, 0, CanDo);
+                        yield return new BlockFaceAccessible(connected.Pos, face, 0, CanDo, TryTakeOut, TryPutInto);
                     }
                 }
             }
@@ -46,12 +51,10 @@ namespace LocustHives.Game.Logistics
 
         public override void Initialize(ICoreAPI api)
         {
-            var quantitySlots = Block.Attributes["quantitySlots"].AsInt();
-            inventory = new InventoryGeneric(quantitySlots, InventoryClassName + "-" + Pos, api);
+            if(inventory == null) InitInventory();
 
             base.Initialize(api);
 
-            // TODO: Inventory lock and weight stuff
 
             var tunableBehavior = GetBehavior<BEBehaviorLocustHiveTunable>();
             if (tunableBehavior != null)
@@ -64,8 +67,30 @@ namespace LocustHives.Game.Logistics
 
             if (api is ICoreServerAPI)
             {
-                inventory.SlotModified += (int obj) => MarkDirty(false);
                 reservations = new HashSet<LogisticsReservation>();
+            }
+        }
+
+        protected void InitInventory()
+        {
+            var quantitySlots = Block.Attributes["quantitySlots"].AsInt();
+            inventory = new InventoryGeneric(quantitySlots, null, null);
+            // TODO: Inventory lock and weight stuff
+            if (Api is ICoreServerAPI)
+            {
+                inventory.SlotModified += (int obj) => MarkDirty(false);
+            }
+        }
+
+        private IEnumerable<BlockFacing> AvailableFaces()
+        {
+            foreach (var face in BlockFacing.ALLFACES)
+            {
+                if (Api.World.BlockAccessor.GetBlock(Pos.AddCopy(face)).Id == 0)
+                {
+                    // Only faces that are air
+                    yield return face;
+                }
             }
         }
 
@@ -88,13 +113,23 @@ namespace LocustHives.Game.Logistics
         private uint CanDo(ItemStack stack)
         {
             var inventory = Inventory;
-            if (inventory == null) return 0;
             bool isTake = stack.StackSize < 0;
             var reserved = (uint)reservations
                 .Where(r => r.Stack.Satisfies(stack) && (r.Stack.StackSize < 0) == isTake)
                 .Sum(r => Math.Abs(r.Stack.StackSize));
-            var able = inventory.CanDo(stack);
-            return (uint)Math.Max(0, (int)able - (int)reserved);
+            return Math.Max(0, inventory.CanDo(stack) - reserved); ;
+        }
+
+        private uint TryTakeOut(ItemStack stack, ItemSlot sinkSlot)
+        {
+            // This method doesn't acutally transfer at the one it is closest too!
+            uint quantity = (uint)Math.Abs(stack.StackSize);
+            return inventory.TryTakeMatching(Api.World, stack, sinkSlot, quantity);
+        }
+
+        private uint TryPutInto(ItemSlot sourceSlot, uint quantity)
+        {
+            return inventory.TryPutIntoBestSlots(Api.World, sourceSlot, quantity);
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
@@ -111,6 +146,46 @@ namespace LocustHives.Game.Logistics
             {
                 dsc.AppendLine(Lang.Get("Empty"));
             }
+        }
+
+        public IEnumerable<BEHiveLattice> TraverseConnected(ISet<BlockPos> visited = null)
+        {
+            if (visited == null) visited = new HashSet<BlockPos>();
+            visited.Add(Pos);
+
+            var queue = new Queue<BEHiveLattice>();
+
+            // Seed queue with immediate neighbors
+            foreach (var face in BlockFacing.ALLFACES)
+            {
+                var be = Api.World.BlockAccessor.GetBlockEntity<BEHiveLattice>(Pos.AddCopy(face));
+                if (be != null && visited.Add(be.Pos))
+                {
+                    queue.Enqueue(be);
+                }
+            }
+
+            // BFS traversal
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                yield return current;
+
+                foreach (var face in BlockFacing.ALLFACES)
+                {
+                    var be = Api.World.BlockAccessor.GetBlockEntity<BEHiveLattice>(current.Pos.AddCopy(face));
+                    if (be != null && visited.Add(be.Pos))
+                    {
+                        queue.Enqueue(be);
+                    }
+                }
+            }
+        }
+
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        {
+            if (inventory == null) InitInventory();
+            base.FromTreeAttributes(tree, worldForResolving);
         }
     }
 }

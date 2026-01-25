@@ -14,6 +14,8 @@ namespace LocustHives.Systems.Logistics.AccessMethods
     public readonly struct BlockFaceAccessible : IInWorldStorageAccessMethod
     {
         readonly System.Func<ItemStack, uint> onCanDo;
+        readonly System.Func<ItemStack, ItemSlot, uint> onTryTakeOut;
+        readonly System.Func<ItemSlot, uint, uint> onTryPutInto;
         public BlockPos BlockPosition { get; }
         public BlockFacing Face { get; }
         public int Priority { get; }
@@ -39,17 +41,35 @@ namespace LocustHives.Systems.Logistics.AccessMethods
             }
         }
 
-        public BlockFaceAccessible(BlockPos pos, BlockFacing face, int priority, System.Func<ItemStack, uint> onCanDo)
+        public BlockFaceAccessible(
+            BlockPos pos,
+            BlockFacing face,
+            int priority,
+            System.Func<ItemStack, uint> onCanDo,
+            System.Func<ItemStack, ItemSlot, uint> onTryTakeOut,
+            System.Func<ItemSlot, uint, uint> onTryPutInto)
         {
             BlockPosition = pos;
             Face = face;
             Priority = priority;
             this.onCanDo = onCanDo;
+            this.onTryTakeOut = onTryTakeOut;
+            this.onTryPutInto = onTryPutInto;
         }
 
         public uint CanDo(ItemStack stack)
         {
             return onCanDo(stack);
+        }
+
+        public uint TryTakeOut(ItemStack stack, ItemSlot sinkSlot)
+        {
+            return onTryTakeOut(stack, sinkSlot);
+        }
+
+        public uint TryPutInto(ItemSlot sourceSlot, uint quantity)
+        {
+            return onTryPutInto(sourceSlot, quantity);
         }
 
     };

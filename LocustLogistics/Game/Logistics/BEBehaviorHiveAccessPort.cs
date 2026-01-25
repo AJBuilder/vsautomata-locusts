@@ -39,7 +39,7 @@ namespace LocustHives.Game.Logistics
         {
             get
             {
-                yield return new BlockFaceAccessible(Blockentity.Pos, facing.Opposite, 0, CanDo);
+                yield return new BlockFaceAccessible(Blockentity.Pos, facing.Opposite, 0, CanDo, TryTakeOut, TryPutInto);
             }
         }
 
@@ -97,6 +97,22 @@ namespace LocustHives.Game.Logistics
                 .Sum(r => Math.Abs(r.Stack.StackSize));
             var able = inventory.CanDo(stack);
             return (uint)Math.Max(0, (int)able - (int)reserved);
+        }
+
+        private uint TryTakeOut(ItemStack stack, ItemSlot sinkSlot)
+        {
+            var inventory = Inventory;
+            if (inventory == null) return 0;
+
+            return inventory.TryTakeMatching(Api.World, stack, sinkSlot, (uint)Math.Abs(stack.StackSize));
+        }
+
+        private uint TryPutInto(ItemSlot sourceSlot, uint quantity)
+        {
+            var inventory = Inventory;
+            if (inventory == null) return 0;
+
+            return inventory.TryPutIntoBestSlots(Api.World, sourceSlot, quantity);
         }
 
         public override void OnBlockRemoved()

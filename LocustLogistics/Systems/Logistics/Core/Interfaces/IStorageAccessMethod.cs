@@ -25,6 +25,23 @@ namespace LocustHives.Systems.Logistics.Core.Interfaces
         /// </summary>
         uint CanDo(ItemStack stack);
 
+        /// <summary>
+        /// Attempts to take items matching the stack from this storage into the sink slot.
+        /// Uses stack.StackSize (absolute value) as the quantity to take.
+        /// </summary>
+        /// <param name="stack">The item type and quantity to take (uses Satisfies for matching)</param>
+        /// <param name="sinkSlot">The slot to receive items</param>
+        /// <returns>Amount actually transferred</returns>
+        uint TryTakeOut(ItemStack stack, ItemSlot sinkSlot);
+
+        /// <summary>
+        /// Attempts to put items from the source slot into this storage.
+        /// </summary>
+        /// <param name="sourceSlot">The slot providing items</param>
+        /// <param name="quantity">Maximum quantity to put</param>
+        /// <returns>Amount actually transferred</returns>
+        uint TryPutInto(ItemSlot sourceSlot, uint quantity);
+
     }
 
     public interface IInWorldStorageAccessMethod : IStorageAccessMethod
