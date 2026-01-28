@@ -40,7 +40,8 @@ namespace LocustHives.Game.Logistics
         public ILogisticsStorage LogisticsStorage {
             get
             {
-                var positions = new[] { this }.Concat(TraverseConnected());
+                if(member == null || !tuningSystem.Membership.GetMembershipOf(member, out int hiveId)) return null;
+                var positions = TraverseTouching(hiveId).Prepend(this).ToArray();
                 return new LatticeStorage(positions);;
             }
         }
@@ -100,29 +101,22 @@ namespace LocustHives.Game.Logistics
                     {
                         // Look at all nearby groupings and deregister old groups and register new ones.
                         var combinedPosToUpdate = new HashSet<BEHiveLattice>{ this };
-                        foreach(var group in FindSurroundingGroups()) // For some reason it's not seeing other lattice????
+                        foreach(var (groupHiveId, group) in FindSurroundingGroups()) // For some reason it's not seeing other lattice????
                         {
-                            var otherMember = group.FirstOrDefault()?.GetAs<IHiveMember>();
-                            if(otherMember != null &&
-                            tuningSystem.Membership.GetMembershipOf(otherMember, out var otherHiveId))
+                            if(groupHiveId == hive)
                             {
-                                if(otherHiveId == hive)
-                                {
-                                    // If nearby matches the new ID, deregister it's old group and
-                                    // accumulate it's positions to be registered.
-                                    var arr = group.ToArray();
-                                    logisticsSystem.UpdateLogisticsStorageMembership(new LatticeStorage(arr), null);
-                                    combinedPosToUpdate.AddRange(arr);
-                                }
-                                else if(otherHiveId == prevHive)
-                                {
-                                    // If it matches the previous id, then it used to be apart of this group
-                                    // and it should be deregistered.
-                                    var arr = group.Append(this);
-                                    logisticsSystem.UpdateLogisticsStorageMembership(new LatticeStorage(arr), null);
-                                }
-                                // Do nothing if it is neither the new or previous hive
+                                // If nearby matches the new ID, deregister it's old group and
+                                // accumulate it's positions to be registered.
+                                logisticsSystem.UpdateLogisticsStorageMembership(new LatticeStorage(group), null);
+                                combinedPosToUpdate.AddRange(group);
                             }
+                            else if(groupHiveId == prevHive)
+                            {
+                                // If it matches the previous id, then it used to be apart of this group
+                                // and it should be deregistered.
+                                logisticsSystem.UpdateLogisticsStorageMembership(new LatticeStorage(group), null);
+                            }
+                            // Do nothing if it is neither the new or previous hive
                         }
 
                         // Finally, update the combined groupings.
@@ -181,16 +175,15 @@ namespace LocustHives.Game.Logistics
         }
 
         /// <summary>
-        /// BFS on connected lattices.
+        /// BFS on touching lattices of the given ID.
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<BEHiveLattice> TraverseConnected(HashSet<BlockPos> visited = null)
+        public IEnumerable<BEHiveLattice> TraverseTouching(int ofId, HashSet<BlockPos> visited = null)
         {
-            if(member == null || !tuningSystem.Membership.GetMembershipOf(member, out int hiveId)) yield break;
-
             if(visited == null) visited = new HashSet<BlockPos>();
             visited.Add(Pos);
             var queue = new Queue<BEHiveLattice>();
+            queue.Enqueue(this);
 
             // BFS traversal
             while (queue.Count > 0)
@@ -200,19 +193,25 @@ namespace LocustHives.Game.Logistics
 
                 foreach (var face in BlockFacing.ALLFACES)
                 {
-                    var be = Api.World.BlockAccessor.GetBlockEntity<BEHiveLattice>(current.Pos.AddCopy(face));
+                    var pos = current.Pos.AddCopy(face);
+
+                    // Pretty sure it is cheaperer to check this first than checking
+                    // for if it is a lattice and has matching membership first?
+                    if(visited.Contains(pos)) continue;
+
+                    var be = Api.World.BlockAccessor.GetBlockEntity<BEHiveLattice>(pos);
                     var otherMember = be?.GetAs<IHiveMember>();
                     if(otherMember != null &&
                         tuningSystem.Membership.GetMembershipOf(otherMember, out var otherHiveId) &&
-                        otherHiveId == hiveId &&
-                        visited.Add(be.Pos)){
+                        otherHiveId == ofId &&
+                        visited.Add(be.Pos))
+                    {
                         queue.Enqueue(be);
                     }
                 }
             }
         }
-
-
+        
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
@@ -231,38 +230,33 @@ namespace LocustHives.Game.Logistics
             }
 
             // Then, unregister the old group
-            var old = LogisticsStorage;
-            if(!logisticsSystem.StorageMembership.GetMembershipOf(old, out var oldMembership)) return;
-            logisticsSystem.UpdateLogisticsStorageMembership(old, null);
-
-            // Then, find all groups surrounding this position.
-            foreach(var grouping in FindSurroundingGroups())
-            {
-                logisticsSystem.UpdateLogisticsStorageMembership(new LatticeStorage(grouping), oldMembership); 
-            }
+            // Simply detuning this lattice should trigger the OnTuned handler which
+            // will handle updating all surrounding blocks??
         }
 
         /// <summary>
-        /// Get's all groupings surrounding this lattics. As if the lattice is not there.
+        /// Get's all groupings surrounding this lattice. As if the lattice is not there.
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<BEHiveLattice[]> FindSurroundingGroups()
+        public IEnumerable<(int hiveId, BEHiveLattice[] group)> FindSurroundingGroups()
         {
+            // We start with this pos already visited, since it is for surrounding groups.
             var visited = new HashSet<BlockPos>{ Pos };
             foreach(var face in BlockFacing.ALLFACES)
             {
                 var pos = Pos.AddCopy(face);
 
-                // Skip positions that we've already captured in a group.
+                // Skip sides/positions that we've already come across.
                 if(visited.Contains(pos)) continue;
 
                 var be = Api.World.BlockAccessor.GetBlockEntity<BEHiveLattice>(pos);
-
-                var grouping = be?.TraverseConnected(visited).ToArray();
-                if(grouping != null && grouping.Count() > 0)
+                var otherMember = be?.GetAs<IHiveMember>();
+                if(be != null && otherMember != null && tuningSystem.Membership.GetMembershipOf(otherMember, out int hiveId))
                 {
-                    // TODO: Should we not use old membership?
-                    yield return grouping;
+                    // We pass it what we have visited thus far since that position has already been
+                    // captured as a group, so no point in checking it's membership.
+                    var grouping = be.TraverseTouching(hiveId, visited).Prepend(be).ToArray();
+                    yield return (hiveId, grouping);
                 }
             }
         }
