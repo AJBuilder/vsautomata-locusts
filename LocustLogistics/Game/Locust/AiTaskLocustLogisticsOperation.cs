@@ -1,19 +1,10 @@
-﻿using LocustHives.Game.Util;
-using LocustHives.Systems.Logistics;
-using LocustHives.Systems.Logistics.Core;
+﻿using LocustHives.Game.Logistics.Locust;
+using LocustHives.Game.Util;
 using LocustHives.Systems.Logistics.Core.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.ConstrainedExecution;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
-using Vintagestory.Client.NoObf;
-using Vintagestory.Essentials;
-using Vintagestory.GameContent;
 
-namespace LocustHives.Game.Logistics.Locust
+namespace LocustHives.Game.Locust
 {
 
     public class AiTaskLocustLogisticsOperation : AiTaskBase

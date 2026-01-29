@@ -12,7 +12,7 @@ using Vintagestory.API.Server;
 
 
 
-namespace LocustHives.Game.Logistics
+namespace LocustHives.Game.Logistics.Lattice
 {
     public interface IStorageLattice
     {
@@ -20,7 +20,6 @@ namespace LocustHives.Game.Logistics
         IEnumerable<ItemStack> Stacks { get; }
         IEnumerable<BlockFacing> AvailableFaces { get; }
         uint CanDo(ItemStack stack);
-
         uint TryTakeOut(ItemStack stack, ItemSlot sinkSlot);
         uint TryPutInto(ItemSlot sourceSlot, uint quantity);
         LogisticsReservation TryReserve(ItemStack stack);

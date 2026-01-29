@@ -16,8 +16,9 @@ using Vintagestory.API.Server;
 
 namespace LocustHives.Game.Nest
 {
-    public class BEBehaviorHiveLocustNest : BlockEntityBehavior, ILocustNest
+    public class BEBehaviorHiveLocustNest : BlockEntityBehavior, ILocustNest, IHiveTunable
     {
+        TuningSystem tuningSystem;
         //List<(string code, byte[] data)> storedLocustData;
 
         //public IEnumerable<EntityLocust> StoredLocusts
@@ -38,6 +39,12 @@ namespace LocustHives.Game.Nest
 
 
 
+        // IHiveTunable implementation
+        public IHiveMember GetHiveMemberHandle()
+        {
+            return new NestHandle(Blockentity.Pos, Api);
+        }
+
         public BEBehaviorHiveLocustNest(BlockEntity blockentity) : base(blockentity)
         {
             //storedLocustData = new List<(string code, byte[] data)>();
@@ -46,23 +53,25 @@ namespace LocustHives.Game.Nest
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
             base.Initialize(api, properties);
-            var modSystem = api.ModLoader.GetModSystem<NestsSystem>();
-            if(api is ICoreServerAPI)
-            {
-                Blockentity.GetBehavior<BEBehaviorLocustHiveTunable>().OnTuned += (prevHive, hive) =>
-                {
-                    modSystem.UpdateNestMembership(this, hive);
-                };
-            }
+            tuningSystem = api.ModLoader.GetModSystem<TuningSystem>();
         }
 
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
+
+            // Detune from hive
+            tuningSystem?.TryTune(this, null);
+
             //for(var i = storedLocustData.Count; i > 0; i--)
             //{
             //    TryUnstoreLocust(i);
             //}
+        }
+
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
         }
 
         //public bool TryStoreLocust(EntityLocust locust)
@@ -150,6 +159,5 @@ namespace LocustHives.Game.Nest
             base.GetBlockInfo(forPlayer, dsc);
             //dsc.AppendLine($"Locusts: {storedLocustData.Count}/{MaxCapacity}");
         }
-
     }
 }

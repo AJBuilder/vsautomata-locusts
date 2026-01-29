@@ -1,6 +1,6 @@
 using Vintagestory.API.Common;
 
-namespace LocustHives.Game.Logistics
+namespace LocustHives.Game.Logistics.Lattice
 {
     public interface IStorageRegulator
     {

@@ -1,4 +1,5 @@
-﻿using LocustHives.Game.Util;
+﻿using LocustHives.Game.Core;
+using LocustHives.Game.Util;
 using LocustHives.Systems.Logistics;
 using LocustHives.Systems.Logistics.Core;
 using LocustHives.Systems.Logistics.Core.Interfaces;
@@ -49,6 +50,7 @@ namespace LocustHives.Game.Logistics
     {
         BlockFacing facing;
         LogisticsSystem modSystem;
+        TuningSystem tuningSystem;
         List<LogisticsPromise> requests;
         int clientRequestCount;
 
@@ -59,7 +61,7 @@ namespace LocustHives.Game.Logistics
                 if (facing == null) return null;
                 BlockPos targetPos = Pos.AddCopy(facing.Opposite);
                 var be = Api.World.BlockAccessor.GetBlockEntity(targetPos);
-                return be?.GetAs<IBlockHiveStorage>()?.LogisticsStorage;
+                return be?.GetAs<IHiveTunable>()?.GetHiveMemberHandle() as ILogisticsStorage;
             }
         }
 
@@ -67,7 +69,8 @@ namespace LocustHives.Game.Logistics
         {
             get
             {
-                if(modSystem.StorageMembership.GetMembershipOf(AttachedStorage, out var hiveId))
+                var storage = AttachedStorage;
+                if (storage is IHiveMember member && tuningSystem.GetMembershipOf(member, out var hiveId))
                 {
                     return modSystem.GetNetworkFor(hiveId);
                 }
@@ -86,7 +89,7 @@ namespace LocustHives.Game.Logistics
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
             base.Initialize(api, properties);
-            
+
             if(api is ICoreServerAPI)
             {
                 requests = new List<LogisticsPromise>();
@@ -95,6 +98,7 @@ namespace LocustHives.Game.Logistics
                 facing = BlockFacing.FromCode(Blockentity.Block.Variant[facingCode]);
 
                 modSystem = api.ModLoader.GetModSystem<LogisticsSystem>();
+                tuningSystem = api.ModLoader.GetModSystem<TuningSystem>();
             }
         }
 

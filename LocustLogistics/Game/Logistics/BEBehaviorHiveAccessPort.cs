@@ -18,11 +18,12 @@ namespace LocustHives.Game.Logistics
 
 
 
-    public class BEBehaviorHiveAccessPort : BlockEntityBehavior, ILogisticsStorage, IBlockHiveStorage
+    public class BEBehaviorHiveAccessPort : BlockEntityBehavior, ILogisticsStorage, IHiveTunable
     {
         // Faces towards the inventory. Access opening is opposite of facing.
         BlockFacing facing;
         HashSet<LogisticsReservation> reservations;
+        TuningSystem tuningSystem;
 
         /// <summary>
         /// For single-block storage like access ports, this simply returns itself.
@@ -67,6 +68,12 @@ namespace LocustHives.Game.Logistics
         {
         }
 
+        // IHiveTunable implementation
+        public IHiveMember GetHiveMemberHandle()
+        {
+            return new GenericBlockEntityLogisticsStorage(Blockentity.Pos, Api);
+        }
+
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
             base.Initialize(api, properties);
@@ -74,18 +81,10 @@ namespace LocustHives.Game.Logistics
             var facingCode = properties["facingCode"].AsString();
             facing = BlockFacing.FromCode(Blockentity.Block.Variant[facingCode]);
 
-            if (api is ICoreServerAPI)
+            if (api is ICoreServerAPI sapi)
             {
                 reservations = new HashSet<LogisticsReservation>();
-
-                var tunableBehavior = Blockentity.GetBehavior<IHiveMember>();
-                if (tunableBehavior != null)
-                {
-                    tunableBehavior.OnTuned += (prevHive, hive) =>
-                    {
-                        api.ModLoader.GetModSystem<LogisticsSystem>().UpdateLogisticsStorageMembership(this, hive);
-                    };
-                }
+                tuningSystem = sapi.ModLoader.GetModSystem<TuningSystem>();
             }
         }
 
@@ -136,12 +135,22 @@ namespace LocustHives.Game.Logistics
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
+
+            // Detune from hive
+            if (tuningSystem != null)
+            {
+                var handle = GetHiveMemberHandle();
+                tuningSystem.Tune(handle, null);
+            }
+
             DisconnectFromLogistics();
         }
 
         public override void OnBlockUnloaded()
         {
             base.OnBlockUnloaded();
+            // Don't detune on unload - membership persists!
+            // Just cleanup reservations
             DisconnectFromLogistics();
         }
 

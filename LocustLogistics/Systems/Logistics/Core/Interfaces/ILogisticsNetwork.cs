@@ -11,8 +11,8 @@ namespace LocustHives.Systems.Logistics.Core.Interfaces
 {
     public interface ILogisticsNetwork
     {
-        IReadOnlySet<ILogisticsWorker> Workers { get; }
-        IReadOnlySet<ILogisticsStorage> Storages { get; }
+        IEnumerable<ILogisticsWorker> Workers { get; }
+        IEnumerable<ILogisticsStorage> Storages { get; }
         LogisticsPromise Request(ItemStack stack, ILogisticsStorage target, bool blocking = true);
     }
 }

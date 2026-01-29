@@ -70,5 +70,26 @@ namespace LocustHives.Systems.Membership
             MemberAssigned?.Invoke(member, oldMembership, membership);
             return oldMembership;
         }
+
+        /// <summary>
+        /// Gets all member-membership pairs.
+        /// Used for serialization.
+        /// </summary>
+        public IEnumerable<(T member, int membership)> GetAllMemberships()
+        {
+            foreach (var kvp in membershipByMembers)
+            {
+                yield return (kvp.Key, kvp.Value);
+            }
+        }
+
+        /// <summary>
+        /// Gets all members across all memberships.
+        /// Used for cleanup operations.
+        /// </summary>
+        public IEnumerable<T> GetAllMembers()
+        {
+            return membershipByMembers.Keys;
+        }
     }
 }

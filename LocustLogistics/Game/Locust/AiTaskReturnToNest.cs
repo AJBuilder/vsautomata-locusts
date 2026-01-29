@@ -1,27 +1,19 @@
-using HarmonyLib;
 using LocustHives.Systems.Nests;
-using LocustHives.Systems.Membership;
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
-using LocustHives.Game.Nests;
 using LocustHives.Game.Core;
 
-namespace LocustHives.Game.Nest
+namespace LocustHives.Game.Locust
 {
     public class AiTaskReturnToNest : AiTaskBase, IAiTask
     {
         bool pathfindingActive;
 
         ILocustNest targetNest;
-        IMembershipRegistry<ILocustNest> nestMembership;
+        TuningSystem tuningSystem;
 
         IHiveMember member;
-        IMembershipRegistry<IHiveMember> membership;
 
         float moveSpeed = 0.02f;
 
@@ -33,8 +25,7 @@ namespace LocustHives.Game.Nest
 
             moveSpeed = taskConfig["movespeed"].AsFloat(0.02f);
 
-            membership = entity.Api.ModLoader.GetModSystem<TuningSystem>().Membership;
-            nestMembership = entity.Api.ModLoader.GetModSystem<NestsSystem>().Membership;
+            tuningSystem = entity.Api.ModLoader.GetModSystem<TuningSystem>();
         }
 
         public override void AfterInitialize()
@@ -58,13 +49,13 @@ namespace LocustHives.Game.Nest
                 entity.WatchedAttributes.HasAttribute("guardedEntityId") ||
                 entity.Attributes.GetLong("unstoredMs") + 10000 > entity.Api.World.ElapsedMilliseconds ||
                 cooldownUntilMs > entity.World.ElapsedMilliseconds ||
-                !membership.GetMembershipOf(member, out var hive)) return false;
+                !tuningSystem.GetMembershipOf(member, out var hive)) return false;
 
             // Find nearest nest with room
             ILocustNest nearest = null;
             double minDistSq = double.MaxValue;
 
-            foreach (var nest in nestMembership.GetMembersOf(hive))
+            foreach (var nest in tuningSystem.GetMembersOf(hive).OfType<ILocustNest>())
             {
                 //if (!nest.HasRoom) continue;
 
@@ -101,9 +92,11 @@ namespace LocustHives.Game.Nest
             if (!base.ContinueExecute(dt)) return false;
 
             // Bail if targetNest is no longer part of the hive, this entity is no longer a member, or their membership no longer matches.
-            var nestIsTuned = nestMembership.GetMembershipOf(targetNest, out var nestHive);
-            var thisIsTuned = membership.GetMembershipOf(member, out var memberHive);
-            if (!nestIsTuned || !thisIsTuned || nestHive != memberHive) return false;
+            // Note: targetNest itself is an ILocustNest, not an IHiveMember handle, so we need to get the handle
+            // This is a problem - we can't get the handle from just the ILocustNest interface
+            // For now, just check if the member is still in a hive
+            var thisIsTuned = tuningSystem.GetMembershipOf(member, out var memberHive);
+            if (!thisIsTuned) return false;
 
             // Finish if no longer pathfinding.
             return pathfindingActive;

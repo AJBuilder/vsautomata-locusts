@@ -1,4 +1,6 @@
-﻿using LocustHives.Systems.Logistics.Core.Interfaces;
+﻿using LocustHives.Game.Core;
+using LocustHives.Systems.Logistics.Core;
+using LocustHives.Systems.Logistics.Core.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -6,9 +8,9 @@ using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
 
-namespace LocustHives.Systems.Logistics.Core
+namespace LocustHives.Game.Logistics
 {
-    public class LogisticsNetwork : ILogisticsNetwork
+    public class HiveLogisticsNetwork : ILogisticsNetwork
     {
         ICoreAPI api;
         /// <summary>
@@ -18,20 +20,20 @@ namespace LocustHives.Systems.Logistics.Core
 
         Dictionary<LogisticsPromise, uint> countCommissioned = new Dictionary<LogisticsPromise, uint>();
 
-        public IReadOnlySet<ILogisticsWorker> Workers { get; }
+        IReadOnlySet<IHiveMember> members;
+        public IEnumerable<ILogisticsWorker> Workers => members.OfType<ILogisticsWorker>();
 
-        public IReadOnlySet<ILogisticsStorage> Storages { get; }
+        public IEnumerable<ILogisticsStorage> Storages => members.OfType<ILogisticsStorage>();
 
         /// <summary>
         /// Promises awaiting processing/servicing.
         /// </summary>
         public IReadOnlyCollection<LogisticsPromise> QueuedPromises => queuedPromises;
 
-        public LogisticsNetwork(ICoreAPI api, IReadOnlySet<ILogisticsWorker> workers, IReadOnlySet<ILogisticsStorage> storage)
+        public HiveLogisticsNetwork(ICoreAPI api, IReadOnlySet<IHiveMember> members)
         {
             this.api = api;
-            Workers = workers;
-            Storages = storage;
+            this.members = members;
         }
 
         public LogisticsPromise Push(ItemStack stack, ILogisticsStorage from, bool blocking = true)
@@ -119,7 +121,7 @@ namespace LocustHives.Systems.Logistics.Core
                         if (state == LogisticsPromiseState.Cancelled)
                         {
                             // Mark unfulfilled count as needing recommisioned.
-                            countCommissioned[promise] -= (countPromised - bestPromise.Fulfilled);
+                            countCommissioned[promise] -= countPromised - bestPromise.Fulfilled;
                             // Requeue main promise if needed
                             if (!queuedPromises.Contains(promise)) queuedPromises.Enqueue(promise);
                         }
